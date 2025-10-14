@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.9" />
+		<PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="9.0.9" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.9" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
+		<PackageReference Include="Quartz.Extensions.Hosting" Version="3.15.0" />
+		<PackageReference Include="Scrutor" Version="6.1.0" />
+		<PackageReference Include="StackExchange.Redis" Version="2.9.25" />
+	</ItemGroup>
+	<ItemGroup>
+	  <ProjectReference Include="..\Stockhub.Common.Application\Stockhub.Common.Application.csproj" />
+	</ItemGroup>
+</Project>

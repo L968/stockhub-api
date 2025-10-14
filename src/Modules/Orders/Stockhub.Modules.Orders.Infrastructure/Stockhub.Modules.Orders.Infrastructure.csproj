@@ -1,0 +1,10 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Common\Stockhub.Common.Infrastructure\Stockhub.Common.Infrastructure.csproj" />
+    <ProjectReference Include="..\Stockhub.Modules.Orders.Application\Stockhub.Modules.Orders.Application.csproj" />
+    <ProjectReference Include="..\Stockhub.Modules.Orders.Presentation\Stockhub.Modules.Orders.Presentation.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Database\Migrations\" />
+  </ItemGroup>
+</Project>

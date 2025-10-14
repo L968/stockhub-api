@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <ItemGroup>
+	<PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.5.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.9" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\aspire\Stockhub.Aspire\Stockhub.Aspire.ServiceDefaults\Stockhub.Aspire.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\..\Modules\Orders\Stockhub.Modules.Orders.Infrastructure\Stockhub.Modules.Orders.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

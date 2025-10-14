@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="8.1.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\..\Common\Stockhub.Common.Presentation\Stockhub.Common.Presentation.csproj" />
+		<ProjectReference Include="..\Stockhub.Modules.Orders.Application\Stockhub.Modules.Orders.Application.csproj" />
+	</ItemGroup>
+
+</Project>
