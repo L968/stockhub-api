@@ -1,0 +1,27 @@
+{
+  "name": "stockhub-postgres-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "tasks.max": "1",
+
+    "database.hostname": "stockhub-postgres",
+    "database.port": "5432",
+    "database.user": "postgres",
+    "database.password": "root",
+    "database.dbname": "stockhub",
+
+    "database.server.name": "stockhub_server",
+    "schema.include.list": "orders",
+    "table.include.list": "orders.*",
+
+    "plugin.name": "pgoutput",
+    "slot.name": "debezium_slot",
+    "publication.name": "debezium_publication",
+
+    "topic.prefix": "postgres",
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "key.converter.schemas.enable": "false",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": "false"
+  }
+}

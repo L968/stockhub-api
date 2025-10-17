@@ -1,5 +1,4 @@
-﻿using System.Buffers;
-using System.Text.Json;
+﻿using System.Text.Json;
 using Microsoft.Extensions.Caching.Distributed;
 using Stockhub.Common.Application.Caching;
 
@@ -25,16 +24,23 @@ internal sealed class CacheService(IDistributedCache cache) : ICacheService
     public Task RefreshAsync(string key, CancellationToken cancellationToken = default) =>
         cache.RefreshAsync(key, cancellationToken);
 
-    private static T Deserialize<T>(byte[] bytes)
-    {
-        return JsonSerializer.Deserialize<T>(bytes)!;
-    }
-
     private static byte[] Serialize<T>(T value)
     {
-        var buffer = new ArrayBufferWriter<byte>();
-        using var writer = new Utf8JsonWriter(buffer);
-        JsonSerializer.Serialize(writer, value);
-        return buffer.WrittenSpan.ToArray();
+        if (value is null)
+        {
+            return [];
+        }
+
+        return JsonSerializer.SerializeToUtf8Bytes(value);
+    }
+
+    private static T? Deserialize<T>(byte[] bytes)
+    {
+        if (bytes == null || bytes.Length == 0)
+        {
+            return default;
+        }
+
+        return JsonSerializer.Deserialize<T>(bytes);
     }
 }

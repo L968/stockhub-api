@@ -1,0 +1,1 @@
+CREATE ROLE debezium REPLICATION LOGIN PASSWORD 'debezium';
