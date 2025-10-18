@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Worker">
+﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
 
   <ItemGroup>
 	<PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.5.1" />
@@ -8,6 +8,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\aspire\Stockhub.Aspire\Stockhub.Aspire.ServiceDefaults\Stockhub.Aspire.ServiceDefaults.csproj" />
     <ProjectReference Include="..\..\Modules\Orders\Stockhub.Modules.Orders.Infrastructure\Stockhub.Modules.Orders.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Stocks\Stockhub.Modules.Stocks.Infrastructure\Stockhub.Modules.Stocks.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Users\Stockhub.Modules.Users.Infrastructure\Stockhub.Modules.Users.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

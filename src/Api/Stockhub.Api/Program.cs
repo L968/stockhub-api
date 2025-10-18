@@ -29,7 +29,7 @@ string redisConnectionString = builder.Configuration.GetConnectionStringOrThrow(
 
 builder.Services.AddInfrastructure(redisConnectionString);
 
-builder.Configuration.AddModuleConfiguration(["orders, stocks, users"]);
+builder.Configuration.AddModuleConfiguration(["orders", "stocks", "users"]);
 
 builder.Services.AddOrdersModule(builder.Configuration);
 builder.Services.AddStocksModule(builder.Configuration);

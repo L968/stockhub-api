@@ -16,7 +16,7 @@ public class ModuleTests : BaseTest
 
         List<Assembly> usersAssemblies =
         [
-            typeof(Modules.Users.Domain.Products.Product).Assembly,
+            typeof(Modules.Users.Domain.Users.User).Assembly,
             Modules.Users.Application.AssemblyReference.Assembly,
             Modules.Users.Presentation.AssemblyReference.Assembly,
             typeof(UsersModule).Assembly

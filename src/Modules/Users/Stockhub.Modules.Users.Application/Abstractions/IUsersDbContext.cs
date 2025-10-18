@@ -1,10 +1,10 @@
-﻿using Stockhub.Modules.Users.Domain.Products;
+﻿using Stockhub.Modules.Users.Domain.Users;
 
 namespace Stockhub.Modules.Users.Application.Abstractions;
 
 public interface IUsersDbContext
 {
-    DbSet<Product> Products { get; }
+    DbSet<User> Users { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }

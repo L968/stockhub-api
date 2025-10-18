@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
 using Stockhub.Modules.Orders.Infrastructure.Database;
+using Stockhub.Modules.Stocks.Infrastructure.Database;
+using Stockhub.Modules.Users.Infrastructure.Database;
 
 namespace Stockhub.MigrationService;
 
@@ -20,11 +22,20 @@ internal sealed class Worker(
         try
         {
             using IServiceScope scope = serviceProvider.CreateScope();
-            OrdersDbContext dbContext = scope.ServiceProvider.GetRequiredService<OrdersDbContext>();
 
-            await EnsureDatabaseAsync(dbContext, stoppingToken);
-            await RunMigrationAsync(dbContext, stoppingToken);
-            await SeedDataAsync(dbContext, stoppingToken);
+            var dbContexts = new List<DbContext>
+            {
+                scope.ServiceProvider.GetRequiredService<OrdersDbContext>(),
+                scope.ServiceProvider.GetRequiredService<StocksDbContext>(),
+                scope.ServiceProvider.GetRequiredService<UsersDbContext>()
+            };
+
+            foreach (DbContext dbContext in dbContexts)
+            {
+                await EnsureDatabaseAsync(dbContext, stoppingToken);
+                await RunMigrationAsync(dbContext, stoppingToken);
+                await SeedDataAsync(dbContext, stoppingToken);
+            }
         }
         catch (Exception ex)
         {
@@ -35,7 +46,7 @@ internal sealed class Worker(
         hostApplicationLifetime.StopApplication();
     }
 
-    private static async Task EnsureDatabaseAsync(OrdersDbContext dbContext, CancellationToken cancellationToken)
+    private static async Task EnsureDatabaseAsync(DbContext dbContext, CancellationToken cancellationToken)
     {
         IRelationalDatabaseCreator dbCreator = dbContext.GetService<IRelationalDatabaseCreator>();
 
@@ -51,7 +62,7 @@ internal sealed class Worker(
         });
     }
 
-    private static async Task RunMigrationAsync(OrdersDbContext dbContext, CancellationToken cancellationToken)
+    private static async Task RunMigrationAsync(DbContext dbContext, CancellationToken cancellationToken)
     {
         IExecutionStrategy strategy = dbContext.Database.CreateExecutionStrategy();
         await strategy.ExecuteAsync(async () =>
@@ -63,7 +74,7 @@ internal sealed class Worker(
         });
     }
 
-    private static async Task SeedDataAsync(OrdersDbContext dbContext, CancellationToken cancellationToken)
+    private static async Task SeedDataAsync(DbContext dbContext, CancellationToken cancellationToken)
     {
         IExecutionStrategy strategy = dbContext.Database.CreateExecutionStrategy();
         await strategy.ExecuteAsync(async () =>
