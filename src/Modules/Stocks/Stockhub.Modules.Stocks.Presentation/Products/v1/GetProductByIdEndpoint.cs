@@ -1,0 +1,24 @@
+﻿using Stockhub.Modules.Stocks.Application.Products.Queries.GetProductById;
+using Stockhub.Modules.Stocks.Presentation;
+
+namespace Stockhub.Modules.Stocks.Presentation.Products.v1;
+
+internal sealed class GetProductByIdEndpoint : IEndpoint
+{
+    public void MapEndpoint(IEndpointRouteBuilder app)
+    {
+        app.MapGet("products/{id:Guid}",
+            async (Guid id, ISender sender, CancellationToken cancellationToken) =>
+            {
+                var query = new GetProductByIdQuery(id);
+                Result<GetProductByIdResponse> result = await sender.Send(query, cancellationToken);
+
+                return result.Match(
+                    onSuccess: response => Results.Ok(response),
+                    onFailure: ApiResults.Problem
+                );
+            })
+        .WithTags(Tags.Products)
+        .MapToApiVersion(1);
+    }
+}

@@ -1,0 +1,8 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Common\Stockhub.Common.Application\Stockhub.Common.Application.csproj" />
+    <ProjectReference Include="..\Stockhub.Modules.Stocks.Domain\Stockhub.Modules.Stocks.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

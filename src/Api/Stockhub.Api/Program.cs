@@ -8,6 +8,7 @@ using Stockhub.Common.Infrastructure;
 using Stockhub.Common.Infrastructure.Extensions;
 using Stockhub.Common.Presentation.Endpoints;
 using Stockhub.Modules.Orders.Infrastructure;
+using Stockhub.Modules.Stocks.Infrastructure;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -16,7 +17,8 @@ builder.AddServiceDefaults();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
 Assembly[] moduleApplicationAssemblies = [
-    Stockhub.Modules.Orders.Application.AssemblyReference.Assembly
+    Stockhub.Modules.Orders.Application.AssemblyReference.Assembly,
+    Stockhub.Modules.Stocks.Application.AssemblyReference.Assembly
 ];
 
 builder.Services.AddApplication(moduleApplicationAssemblies);
@@ -25,9 +27,10 @@ string redisConnectionString = builder.Configuration.GetConnectionStringOrThrow(
 
 builder.Services.AddInfrastructure(redisConnectionString);
 
-builder.Configuration.AddModuleConfiguration(["orders"]);
+builder.Configuration.AddModuleConfiguration(["orders, stocks"]);
 
 builder.Services.AddOrdersModule(builder.Configuration);
+builder.Services.AddStocksModule(builder.Configuration);
 
 builder.Services.AddHealthChecksConfiguration(builder.Configuration);
 
