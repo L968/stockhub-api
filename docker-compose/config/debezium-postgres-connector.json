@@ -11,8 +11,8 @@
     "database.dbname": "stockhub",
 
     "database.server.name": "stockhub_server",
-    "schema.include.list": "orders",
-    "table.include.list": "orders.*",
+    "schema.include.list": "users,stocks,orders",
+    "table.include.list": "users.user,stocks.stock,orders.trade,orders.order",
 
     "plugin.name": "pgoutput",
     "slot.name": "debezium_slot",
