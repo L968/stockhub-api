@@ -1,10 +1,11 @@
 ﻿using System.Reflection;
+using Stockhub.Modules.Users.Domain;
 
 namespace Stockhub.Modules.Users.ArchitectureTests.Abstractions;
 
 public abstract class BaseTest
 {
-    protected static readonly Assembly DomainAssembly = typeof(Domain.Users.User).Assembly;
+    protected static readonly Assembly DomainAssembly = typeof(User).Assembly;
 
     protected static readonly Assembly ApplicationAssembly = typeof(Application.AssemblyReference).Assembly;
 

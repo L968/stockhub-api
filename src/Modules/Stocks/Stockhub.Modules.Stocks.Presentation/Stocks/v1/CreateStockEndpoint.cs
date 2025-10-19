@@ -1,25 +1,25 @@
-﻿using Stockhub.Modules.Users.Application.Users.CreateUser;
+﻿using Stockhub.Modules.Stocks.Application.Stocks.CreateStock;
 
-namespace Stockhub.Modules.Users.Presentation.Users.v1;
+namespace Stockhub.Modules.Stocks.Presentation.Stocks.v1;
 
-internal sealed class CreateUserEndpoint : IEndpoint
+internal sealed class CreateStockEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPost("users",
+        app.MapPost("stocks",
             async (
-                CreateUserCommand command,
+                CreateStockCommand command,
                 ISender sender,
                 CancellationToken cancellationToken) =>
             {
                 Result<Guid> result = await sender.Send(command, cancellationToken);
 
                 return result.Match(
-                    onSuccess: userId => Results.Created($"/users/{userId}", new { userId }),
+                    onSuccess: stockId => Results.Created($"/stocks/{stockId}", new { stockId }),
                     onFailure: ApiResults.Problem
                 );
             })
-        .WithTags(Tags.Users)
+        .WithTags(Tags.Stocks)
         .MapToApiVersion(1);
     }
 }

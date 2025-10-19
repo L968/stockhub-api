@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Stockhub.Modules.Users.Domain.Users;
+using Stockhub.Modules.Users.Domain;
 
 namespace Stockhub.Modules.Users.Infrastructure.Users;
 

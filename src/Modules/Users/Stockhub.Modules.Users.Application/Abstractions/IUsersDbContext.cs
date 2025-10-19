@@ -1,4 +1,4 @@
-﻿using Stockhub.Modules.Users.Domain.Users;
+﻿using Stockhub.Modules.Users.Domain;
 
 namespace Stockhub.Modules.Users.Application.Abstractions;
 

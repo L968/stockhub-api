@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Stockhub.Common.Infrastructure.Extensions;
 using Stockhub.Modules.Users.Application.Abstractions;
-using Stockhub.Modules.Users.Domain.Users;
+using Stockhub.Modules.Users.Domain;
 using Stockhub.Modules.Users.Infrastructure.Users;
 
 namespace Stockhub.Modules.Users.Infrastructure.Database;
