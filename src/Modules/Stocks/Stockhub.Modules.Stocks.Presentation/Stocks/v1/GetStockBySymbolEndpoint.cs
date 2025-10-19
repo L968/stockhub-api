@@ -6,7 +6,7 @@ internal sealed class GetStockBySymbolEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapGet("stocks/{symbol:string}",
+        app.MapGet("stocks/{symbol}",
             async (
                 string symbol,
                 ISender sender,
