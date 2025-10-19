@@ -3,7 +3,6 @@ using NetArchTest.Rules;
 using Stockhub.ArchitectureTests.Abstractions;
 using Stockhub.Modules.Orders.Infrastructure;
 using Stockhub.Modules.Stocks.Infrastructure;
-using Stockhub.Modules.Users.Domain;
 using Stockhub.Modules.Users.Infrastructure;
 
 namespace Stockhub.ArchitectureTests.Layers;
@@ -17,7 +16,7 @@ public class ModuleTests : BaseTest
 
         List<Assembly> usersAssemblies =
         [
-            typeof(User).Assembly,
+            typeof(Modules.Users.Domain.User).Assembly,
             Modules.Users.Application.AssemblyReference.Assembly,
             Modules.Users.Presentation.AssemblyReference.Assembly,
             typeof(UsersModule).Assembly
@@ -37,7 +36,7 @@ public class ModuleTests : BaseTest
 
         List<Assembly> ordersAssemblies =
         [
-            typeof(Modules.Orders.Domain.Products.Product).Assembly,
+            typeof(Modules.Orders.Domain.Orders.Order).Assembly,
             Modules.Orders.Application.AssemblyReference.Assembly,
             Modules.Orders.Presentation.AssemblyReference.Assembly,
             typeof(OrdersModule).Assembly
