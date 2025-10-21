@@ -13,6 +13,7 @@ internal sealed class TradeConfiguration : IEntityTypeConfiguration<Trade>
         builder.HasKey(t => t.Id);
 
         builder.Property(t => t.Id).HasColumnName("id");
+        builder.Property(t => t.StockId).HasColumnName("stock_id");
         builder.Property(t => t.Symbol).HasColumnName("symbol");
         builder.Property(t => t.BuyerId).HasColumnName("buyer_id");
         builder.Property(t => t.SellerId).HasColumnName("seller_id");
@@ -21,7 +22,9 @@ internal sealed class TradeConfiguration : IEntityTypeConfiguration<Trade>
         builder.Property(t => t.Price).HasColumnName("price").HasPrecision(18, 2);
         builder.Property(t => t.Quantity).HasColumnName("quantity");
         builder.Property(t => t.ExecutedAt).HasColumnName("executed_at");
-        builder.Property(t => t.CreatedAtUtc).HasColumnName("created_at");
-        builder.Property(t => t.UpdatedAtUtc).HasColumnName("updated_at");
+
+        builder.HasIndex(t => t.StockId);
+        builder.HasIndex(t => t.BuyerId);
+        builder.HasIndex(t => t.SellerId);
     }
 }

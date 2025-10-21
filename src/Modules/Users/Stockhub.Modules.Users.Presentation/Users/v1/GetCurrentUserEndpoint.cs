@@ -1,4 +1,4 @@
-﻿using Stockhub.Modules.Users.Application.Users.GetCurrentUser;
+﻿using Stockhub.Modules.Users.Application.Features.GetCurrentUser;
 
 namespace Stockhub.Modules.Users.Presentation.Users.v1;
 

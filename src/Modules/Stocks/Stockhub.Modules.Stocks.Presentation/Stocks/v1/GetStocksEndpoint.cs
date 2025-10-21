@@ -1,4 +1,4 @@
-﻿using Stockhub.Modules.Stocks.Application.Stocks.GetStocks;
+﻿using Stockhub.Modules.Stocks.Application.Features.GetStocks;
 
 namespace Stockhub.Modules.Stocks.Presentation.Stocks.v1;
 

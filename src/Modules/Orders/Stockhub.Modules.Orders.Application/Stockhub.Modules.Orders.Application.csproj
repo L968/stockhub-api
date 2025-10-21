@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\Common\Stockhub.Common.Application\Stockhub.Common.Application.csproj" />
+    <ProjectReference Include="..\..\Stocks\Stockhub.Modules.Stocks.PublicApi\Stockhub.Modules.Stocks.PublicApi.csproj" />
     <ProjectReference Include="..\Stockhub.Modules.Orders.Domain\Stockhub.Modules.Orders.Domain.csproj" />
   </ItemGroup>
 

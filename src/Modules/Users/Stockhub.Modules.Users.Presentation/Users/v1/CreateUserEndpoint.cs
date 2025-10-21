@@ -1,4 +1,4 @@
-﻿using Stockhub.Modules.Users.Application.Users.CreateUser;
+﻿using Stockhub.Modules.Users.Application.Features.CreateUser;
 
 namespace Stockhub.Modules.Users.Presentation.Users.v1;
 

@@ -1,4 +1,4 @@
-﻿using Stockhub.Modules.Stocks.Application.Stocks.CreateStock;
+﻿using Stockhub.Modules.Stocks.Application.Features.CreateStock;
 
 namespace Stockhub.Modules.Stocks.Presentation.Stocks.v1;
 

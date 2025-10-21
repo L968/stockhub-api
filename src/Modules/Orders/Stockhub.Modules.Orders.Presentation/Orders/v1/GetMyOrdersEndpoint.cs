@@ -1,5 +1,5 @@
 ﻿using Stockhub.Common.Application;
-using Stockhub.Modules.Orders.Application.Orders.GetMyOrders;
+using Stockhub.Modules.Orders.Application.Features.Orders.GetMyOrders;
 using Stockhub.Modules.Orders.Domain.Orders;
 
 namespace Stockhub.Modules.Orders.Presentation.Orders.v1;

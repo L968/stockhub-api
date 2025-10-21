@@ -1,6 +1,6 @@
 ﻿using Stockhub.Common.Domain.Results;
 using Stockhub.Modules.Orders.Application.Abstractions;
-using Stockhub.Modules.Orders.Application.Orders.PlaceOrder;
+using Stockhub.Modules.Orders.Application.Features.Orders.PlaceOrder;
 using Stockhub.Modules.Orders.Domain.Orders;
 
 namespace Stockhub.Modules.Orders.Application.Services;

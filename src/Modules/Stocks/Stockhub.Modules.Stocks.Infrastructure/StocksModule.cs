@@ -7,6 +7,8 @@ using Stockhub.Common.Infrastructure.Extensions;
 using Stockhub.Common.Presentation.Endpoints;
 using Stockhub.Modules.Stocks.Application.Abstractions;
 using Stockhub.Modules.Stocks.Infrastructure.Database;
+using Stockhub.Modules.Stocks.Infrastructure.PublicApi;
+using Stockhub.Modules.Stocks.PublicApi;
 
 namespace Stockhub.Modules.Stocks.Infrastructure;
 
@@ -16,6 +18,7 @@ public static class StocksModule
     {
         services.AddDatabase(configuration);
         services.AddEndpoints(Presentation.AssemblyReference.Assembly);
+        services.AddScoped<IStocksApi, StocksApi>();
 
         return services;
     }
