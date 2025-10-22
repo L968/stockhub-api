@@ -9,12 +9,12 @@ public static class OrderErrors
         "Order cannot be cancelled in its current status."
     );
 
-    public static readonly Error InsufficientBalance = Error.Problem(
+    public static readonly Error InsufficientBalance = Error.Conflict(
         "Order.InsufficientBalance",
         "The user does not have enough balance to place this buy order."
     );
 
-    public static readonly Error InsufficientPortfolio = Error.Problem(
+    public static readonly Error InsufficientPortfolio = Error.Conflict(
         "Order.InsufficientPortfolio",
         "The user does not have enough quantity in portfolio to place this sell order."
     );

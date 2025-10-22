@@ -4,6 +4,12 @@ namespace Stockhub.Modules.Orders.Domain.Stocks;
 
 public static class StockErrors
 {
+    public static Error NotFound(Guid stockId) =>
+        Error.NotFound(
+            "Stock.NotFound",
+            $"The stock with identifier \"{stockId}\" was not found."
+        );
+
     public static Error SymbolNotFound(string symbol) =>
         Error.NotFound(
             "Stock.SymbolNotFound",

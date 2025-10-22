@@ -82,22 +82,26 @@ services:
          condition: service_started
      networks:
        - stockhub-net
-     command: |
+     command: >
        /bin/sh -c "
-        echo 'Waiting for Kafka Connect API to be ready on port 8083...'
-
+        echo 'Waiting for Kafka Connect API to be ready on port 8083...';
         while [ $(curl -s -o /dev/null -w '%{http_code}' http://stockhub-debezium-connect:8083/connectors) -ne 200 ]; do
-            echo 'Connect not ready yet... sleeping 5s'
+            echo 'Connect not ready yet... sleeping 5s';
             sleep 5;
-        done
-        echo 'Kafka Connect API is ready! Registering Debezium Connector...'
+        done;
+        echo 'Kafka Connect API is ready! Registering connectors...';
 
-        curl -X POST -H 'Content-Type: application/json' --data @/config/debezium-postgres-connector.json http://stockhub-debezium-connect:8083/connectors || true
+        echo 'Registering Debezium Postgres Source Connector...';
+        curl -X POST -H 'Content-Type: application/json' --data @/config/debezium-postgres-connector.json http://stockhub-debezium-connect:8083/connectors || true;
 
-        echo 'Connector registration attempt complete.'
-        "
+        echo 'Registering JDBC Sink Connector for Products...';
+        curl -X POST -H 'Content-Type: application/json' --data @/config/sink-products-connector.json http://stockhub-debezium-connect:8083/connectors || true;
+
+        echo 'Connector registration attempts complete.';
+       "
      volumes:
        - ./config/debezium-postgres-connector.json:/config/debezium-postgres-connector.json
+       - ./config/sink-products-connector.json:/config/sink-products-connector.json
      restart: "on-failure"
 
   stockhub-kafka-ui:

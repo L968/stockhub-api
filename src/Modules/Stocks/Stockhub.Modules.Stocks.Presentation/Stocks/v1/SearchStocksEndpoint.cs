@@ -9,7 +9,7 @@ internal sealed class FindStocksEndpoint : IEndpoint
     {
         app.MapGet("stocks/find",
             async (
-                [FromQuery(Name = "query")] string query,
+                [FromQuery] string query,
                 ISender sender,
                 CancellationToken cancellationToken) =>
             {

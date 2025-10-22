@@ -1,21 +1,34 @@
 {
-  "name": "stockhub-products-sink",
+  "name": "stockhub-stocks-sink",
   "config": {
-    "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+    "connector.class": "io.debezium.connector.jdbc.JdbcSinkConnector",
     "tasks.max": "1",
-    "topics": "postgres.orders.Products",
+    "topics": "postgres.stocks.stock",
+
     "connection.url": "jdbc:postgresql://stockhub-postgres:5432/stockhub",
-    "connection.user": "postgres",
+    "connection.username": "postgres",
     "connection.password": "root",
-    "auto.create": "true",
-    "auto.evolve": "true",
+
+    "table.name.format": "orders.mv_stock",
     "insert.mode": "upsert",
-    "pk.mode": "record_key",
-    "pk.fields": "Id",
-    "table.name.format": "stocks.product",
+    "primary.key.mode": "record_key",
+    "primary.key.fields": "id",
+    "delete.enabled": "true",
+    "auto.create": "false",
+    "auto.evolve": "false",
+
     "key.converter": "org.apache.kafka.connect.json.JsonConverter",
     "key.converter.schemas.enable": "false",
     "value.converter": "org.apache.kafka.connect.json.JsonConverter",
-    "value.converter.schemas.enable": "false"
+    "value.converter.schemas.enable": "false",
+
+    "transforms": "unwrap",
+    "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+    "transforms.unwrap.drop.tombstones": "false",
+    "transforms.unwrap.delete.handling.mode": "rewrite",
+
+    "batch.size": "300",
+    "max.retries": "5",
+    "retry.backoff.ms": "3000"
   }
 }
