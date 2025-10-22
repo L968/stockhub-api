@@ -2,4 +2,4 @@
 
 namespace Stockhub.Modules.Stocks.Application.Features.SearchStocks;
 
-public sealed record SearchStocksQuery(string SearchTerm) : IRequest<Result<List<SearchStocksResponse>>>;
+public sealed record FindStocksQuery(string Query) : IRequest<Result<List<FindStocksResponse>>>;

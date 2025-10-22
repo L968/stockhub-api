@@ -3,18 +3,18 @@ using Stockhub.Modules.Stocks.Application.Features.SearchStocks;
 
 namespace Stockhub.Modules.Stocks.Presentation.Stocks.v1;
 
-internal sealed class SearchStocksEndpoint : IEndpoint
+internal sealed class FindStocksEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapGet("stocks",
+        app.MapGet("stocks/find",
             async (
-                [FromQuery] string search,
+                [FromQuery(Name = "query")] string query,
                 ISender sender,
                 CancellationToken cancellationToken) =>
             {
-                var query = new SearchStocksQuery(search);
-                Result<List<SearchStocksResponse>> result = await sender.Send(query, cancellationToken);
+                var request = new FindStocksQuery(query);
+                Result<List<FindStocksResponse>> result = await sender.Send(request, cancellationToken);
 
                 return result.Match(Results.Ok, ApiResults.Problem);
             })

@@ -11,6 +11,13 @@ internal sealed class CreateStockHandler(
 {
     public async Task<Result<Guid>> Handle(CreateStockCommand request, CancellationToken cancellationToken)
     {
+        bool symbolExists = await dbContext.Stocks.AnyAsync(s => s.Symbol == request.Symbol, cancellationToken);
+
+        if (symbolExists)
+        {
+            return Result.Failure(StockErrors.StockAlreadyExists(request.Symbol));
+        }
+
         Stock stock = new(request.Symbol, request.Name, request.Sector);
 
         await dbContext.Stocks.AddAsync(stock, cancellationToken);

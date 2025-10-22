@@ -18,5 +18,7 @@ internal sealed class StockConfiguration : IEntityTypeConfiguration<Stock>
         builder.Property(s => s.Sector).HasColumnName("sector");
         builder.Property(s => s.CreatedAtUtc).HasColumnName("created_at");
         builder.Property(s => s.UpdatedAtUtc).HasColumnName("updated_at");
+
+        builder.HasIndex(s => s.Symbol).IsUnique();
     }
 }

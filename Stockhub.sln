@@ -87,6 +87,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stockhub.Modules.Users.Arch
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stockhub.Modules.Stocks.PublicApi", "src\Modules\Stocks\Stockhub.Modules.Stocks.PublicApi\Stockhub.Modules.Stocks.PublicApi.csproj", "{2933A888-F55D-490E-8DE0-F558E893A790}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Consumers", "Consumers", "{00379551-9DEC-4708-8395-FDC41DBEE522}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stockhub.Consumers", "src\Consumers\Stockhub.Consumers\Stockhub.Consumers.csproj", "{54A9F3E0-CB90-4F7A-A15D-B2E5AAA2BC74}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -193,6 +197,10 @@ Global
 		{2933A888-F55D-490E-8DE0-F558E893A790}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2933A888-F55D-490E-8DE0-F558E893A790}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2933A888-F55D-490E-8DE0-F558E893A790}.Release|Any CPU.Build.0 = Release|Any CPU
+		{54A9F3E0-CB90-4F7A-A15D-B2E5AAA2BC74}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{54A9F3E0-CB90-4F7A-A15D-B2E5AAA2BC74}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{54A9F3E0-CB90-4F7A-A15D-B2E5AAA2BC74}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{54A9F3E0-CB90-4F7A-A15D-B2E5AAA2BC74}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -232,6 +240,8 @@ Global
 		{E9D64A37-BAD9-BAC0-89A7-AEB68E342E09} = {EC0FD94B-8031-475E-A25E-FC4C4CB2ABB0}
 		{064C6615-BD76-7D0C-597E-E012EB1716A8} = {068B68CB-6472-4CA3-871E-ADD280381995}
 		{2933A888-F55D-490E-8DE0-F558E893A790} = {02A31AFC-DB8E-4727-ADB2-6968BB12F0DB}
+		{00379551-9DEC-4708-8395-FDC41DBEE522} = {FFBBE61A-FF2F-4A4E-A41B-2C6F7951E4A0}
+		{54A9F3E0-CB90-4F7A-A15D-B2E5AAA2BC74} = {00379551-9DEC-4708-8395-FDC41DBEE522}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {80DA3F9A-1C03-4B39-B34C-BE190B7C7983}
