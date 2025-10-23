@@ -9,4 +9,10 @@ public static class UserErrors
             "User.NotFound",
             $"The user with identifier \"{userId}\" was not found."
         );
+
+    public static Error EmailAlreadyExists =>
+        Error.Conflict(
+            "User.EmailAlreadyExists",
+            $"Thi email is already registered."
+        );
 }

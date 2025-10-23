@@ -1,0 +1,29 @@
+{
+  "name": "stockhub-users-to-orders-mvuser-sink",
+  "config": {
+    "connector.class": "io.debezium.connector.jdbc.JdbcSinkConnector",
+    "tasks.max": "1",
+    "topics": "postgres.users.user",
+
+    "connection.url": "jdbc:postgresql://stockhub-postgres:5432/stockhub",
+    "connection.username": "postgres",
+    "connection.password": "root",
+
+    "table.name.format": "orders.mv_user",
+    "insert.mode": "upsert",
+    "primary.key.mode": "record_key",
+    "primary.key.fields": "id",
+    "delete.enabled": "true",
+    "auto.create": "false",
+    "auto.evolve": "false",
+
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "key.converter.schemas.enable": "true",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": "true",
+
+    "batch.size": "300",
+    "max.retries": "5",
+    "retry.backoff.ms": "3000"
+  }
+}

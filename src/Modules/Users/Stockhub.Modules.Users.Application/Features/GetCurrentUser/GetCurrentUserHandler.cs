@@ -16,7 +16,7 @@ internal sealed class GetCurrentUserHandler(
 
         if (user is null)
         {
-            return Result.Failure<GetUserResponse>(UserErrors.NotFound(request.UserId));
+            return Result.Failure(UserErrors.NotFound(request.UserId));
         }
 
         var response = new GetUserResponse(
@@ -29,6 +29,6 @@ internal sealed class GetCurrentUserHandler(
 
         logger.LogDebug("Fetched user {@User}", user);
 
-        return Result.Success(response);
+        return response;
     }
 }

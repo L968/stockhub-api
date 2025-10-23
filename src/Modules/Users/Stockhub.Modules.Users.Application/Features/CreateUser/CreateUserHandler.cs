@@ -10,6 +10,13 @@ internal sealed class CreateUserHandler(
 {
     public async Task<Result<Guid>> Handle(CreateUserCommand request, CancellationToken cancellationToken)
     {
+        bool emailExists = await dbContext.Users.AnyAsync(u => u.Email == request.Email, cancellationToken);
+
+        if (emailExists)
+        {
+            return Result.Failure(UserErrors.EmailAlreadyExists);
+        }
+
         User user = new(
             email: request.Email,
             fullName: request.FullName,
@@ -21,6 +28,6 @@ internal sealed class CreateUserHandler(
 
         logger.LogDebug("Created new user {@User}", user);
 
-        return Result.Success(user.Id);
+        return user.Id;
     }
 }

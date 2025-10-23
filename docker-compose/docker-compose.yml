@@ -92,16 +92,20 @@ services:
         echo 'Kafka Connect API is ready! Registering connectors...';
 
         echo 'Registering Debezium Postgres Source Connector...';
-        curl -X POST -H 'Content-Type: application/json' --data @/config/debezium-postgres-connector.json http://stockhub-debezium-connect:8083/connectors || true;
+        curl -X POST -H 'Content-Type: application/json' --data @/config/stockhub-postgres-cdc-connector.json http://stockhub-debezium-connect:8083/connectors || true;
 
-        echo 'Registering JDBC Sink Connector for Products...';
-        curl -X POST -H 'Content-Type: application/json' --data @/config/sink-products-connector.json http://stockhub-debezium-connect:8083/connectors || true;
+        echo 'Registering JDBC Sink Connector for Stocks...';
+        curl -X POST -H 'Content-Type: application/json' --data @/config/stockhub-stocks-to-orders-mvstock-sink.json http://stockhub-debezium-connect:8083/connectors || true;
+
+        echo 'Registering JDBC Sink Connector for Users...';
+        curl -X POST -H 'Content-Type: application/json' --data @/config/stockhub-users-to-orders-mvuser-sink.json http://stockhub-debezium-connect:8083/connectors || true;
 
         echo 'Connector registration attempts complete.';
        "
      volumes:
-       - ./config/debezium-postgres-connector.json:/config/debezium-postgres-connector.json
-       - ./config/sink-products-connector.json:/config/sink-products-connector.json
+       - ./config/stockhub-postgres-cdc-connector.json:/config/stockhub-postgres-cdc-connector.json
+       - ./config/stockhub-stocks-to-orders-mvstock-sink.json:/config/stockhub-stocks-to-orders-mvstock-sink.json
+       - ./config/stockhub-users-to-orders-mvuser-sink.json:/config/stockhub-users-to-orders-mvuser-sink.json
      restart: "on-failure"
 
   stockhub-kafka-ui:

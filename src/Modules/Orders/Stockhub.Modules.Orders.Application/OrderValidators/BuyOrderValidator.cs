@@ -22,11 +22,11 @@ public sealed class BuyOrderValidator(IOrdersDbContext dbContext) : ISideOrderVa
             return Result.Failure(UserErrors.NotFound(command.UserId));
         }
 
-        bool exists = await dbContext.Stocks
+        bool stockExists = await dbContext.Stocks
             .AsNoTracking()
             .AnyAsync(s => s.Id == command.StockId, cancellationToken);
 
-        if (!exists)
+        if (!stockExists)
         {
             return Result.Failure(StockErrors.NotFound(command.StockId));
         }

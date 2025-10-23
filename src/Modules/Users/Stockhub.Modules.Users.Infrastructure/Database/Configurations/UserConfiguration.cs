@@ -18,5 +18,7 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.CurrentBalance).HasColumnName("current_balance").HasPrecision(18, 2);
         builder.Property(u => u.CreatedAtUtc).HasColumnName("created_at");
         builder.Property(u => u.UpdatedAtUtc).HasColumnName("updated_at");
+
+        builder.HasIndex(u => u.Email).IsUnique();
     }
 }

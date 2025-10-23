@@ -1,5 +1,5 @@
 {
-  "name": "stockhub-postgres-connector",
+  "name": "stockhub-postgres-cdc-connector",
   "config": {
     "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
     "tasks.max": "1",

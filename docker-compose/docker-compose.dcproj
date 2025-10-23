@@ -11,8 +11,9 @@
     <DockerComposeProjectName>stockhub</DockerComposeProjectName>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="config\debezium-postgres-connector.json" />
-    <None Include="config\sink-products-connector.json" />
+    <None Include="config\stockhub-postgres-cdc-connector.json" />
+    <None Include="config\stockhub-stocks-to-orders-mvstock-sink.json" />
+    <None Include="config\stockhub-users-to-orders-mvuser-sink.json" />
     <None Include="docker-compose.override.yml">
       <DependentUpon>docker-compose.yml</DependentUpon>
     </None>
