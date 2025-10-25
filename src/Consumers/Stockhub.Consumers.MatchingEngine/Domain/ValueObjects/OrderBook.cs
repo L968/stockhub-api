@@ -25,17 +25,15 @@ internal sealed class OrderBook(Guid stockId)
         }
     }
 
-    public void RemoveFilledOrders()
-    {
-        RemoveOrders(_buyOrders);
-        RemoveOrders(_sellOrders);
-    }
-
     public IEnumerable<Trade> Match(OrderPlacedEvent incoming)
     {
-        return incoming.Side == OrderSide.Buy
+        List<Trade> trades = incoming.Side == OrderSide.Buy
             ? MatchBuyOrder(incoming)
             : MatchSellOrder(incoming);
+
+        RemoveFilledOrders();
+
+        return trades;
     }
 
     private List<Trade> MatchBuyOrder(OrderPlacedEvent incoming)
@@ -49,7 +47,7 @@ internal sealed class OrderBook(Guid stockId)
 
         foreach (OrderPlacedEvent? sellOrder in matches)
         {
-            if (IsFullyFilled(incoming))
+            if (incoming.Status == OrderStatus.Filled)
             {
                 break;
             }
@@ -62,11 +60,8 @@ internal sealed class OrderBook(Guid stockId)
             sellOrder.FilledQuantity += quantityToFill;
 
             sellOrder.Status = GetOrderStatus(sellOrder);
+            incoming.Status = GetOrderStatus(incoming);
         }
-
-        incoming.Status = GetOrderStatus(incoming);
-
-        _sellOrders.RemoveAll(s => s.Status == OrderStatus.Filled);
 
         return trades;
     }
@@ -82,7 +77,7 @@ internal sealed class OrderBook(Guid stockId)
 
         foreach (OrderPlacedEvent? buyOrder in matches)
         {
-            if (IsFullyFilled(incoming))
+            if (incoming.Status == OrderStatus.Filled)
             {
                 break;
             }
@@ -95,18 +90,10 @@ internal sealed class OrderBook(Guid stockId)
             buyOrder.FilledQuantity += quantityToFill;
 
             buyOrder.Status = GetOrderStatus(buyOrder);
+            incoming.Status = GetOrderStatus(incoming);
         }
 
-        incoming.Status = GetOrderStatus(incoming);
-
-        _buyOrders.RemoveAll(s => s.Status == OrderStatus.Filled);
-
         return trades;
-    }
-
-    private static void RemoveOrders(List<OrderPlacedEvent> orders)
-    {
-        orders.RemoveAll(o => o.Status == OrderStatus.Filled || o.FilledQuantity == o.Quantity);
     }
 
     private Trade CreateTrade(OrderPlacedEvent buyOrder, OrderPlacedEvent sellOrder, int quantity)
@@ -120,11 +107,6 @@ internal sealed class OrderBook(Guid stockId)
             price: sellOrder.Price,
             quantity: quantity
         );
-    }
-
-    private static bool IsFullyFilled(OrderPlacedEvent order)
-    {
-        return order.FilledQuantity >= order.Quantity;
     }
 
     private static int GetQuantityToFill(OrderPlacedEvent incoming, OrderPlacedEvent opposite)
@@ -148,5 +130,11 @@ internal sealed class OrderBook(Guid stockId)
         }
 
         return OrderStatus.PartiallyFilled;
+    }
+
+    private void RemoveFilledOrders()
+    {
+        _buyOrders.RemoveAll(o => o.Status == OrderStatus.Filled);
+        _sellOrders.RemoveAll(o => o.Status == OrderStatus.Filled);
     }
 }

@@ -41,7 +41,11 @@ internal sealed class MatchingEngine(
         }
 
         await ordersDbContext.SaveChangesAsync(cancellationToken);
-        CleanupFilledOrders(order.StockId);
+
+        if (orderBook.IsEmpty)
+        {
+            _orderBooks.Remove(order.StockId);
+        }
     }
 
     private async Task BuildAsync(CancellationToken cancellationToken)
@@ -108,20 +112,5 @@ internal sealed class MatchingEngine(
 
         buyer.CurrentBalance -= totalValue;
         seller.CurrentBalance += totalValue;
-    }
-
-    private void CleanupFilledOrders(Guid stockId)
-    {
-        if (!_orderBooks.TryGetValue(stockId, out OrderBook? orderBook))
-        {
-            return;
-        }
-
-        orderBook.RemoveFilledOrders();
-
-        if (orderBook.IsEmpty)
-        {
-            _orderBooks.Remove(stockId);
-        }
     }
 }

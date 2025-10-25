@@ -383,24 +383,4 @@ public class OrderBookTests
         Assert.Equal(0, sell.FilledQuantity);
         Assert.Equal(OrderStatus.Pending, sell.Status);
     }
-
-    [Fact]
-    public void RemoveFilledOrders_Should_Remove_Multiple_Filled_Orders()
-    {
-        // Arrange
-        var book = new OrderBook(_stockId);
-        OrderPlacedEvent buy1 = CreateOrder(OrderSide.Buy, 100, 0, 0, OrderStatus.Filled);
-        OrderPlacedEvent buy2 = CreateOrder(OrderSide.Buy, 101, 5, 5, OrderStatus.Filled);
-        OrderPlacedEvent sell = CreateOrder(OrderSide.Sell, 102, 10);
-        book.Add(buy1);
-        book.Add(buy2);
-        book.Add(sell);
-
-        // Act
-        book.RemoveFilledOrders();
-
-        // Assert
-        Assert.Equal(1, book.TotalOrders);
-        Assert.Equal(OrderStatus.Pending, sell.Status);
-    }
 }
