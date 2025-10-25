@@ -14,7 +14,7 @@
   <ItemGroup>
 	<ProjectReference Include="..\..\..\src\Api\Stockhub.Api\Stockhub.Api.csproj" />
 	<ProjectReference Include="..\..\..\src\Common\Stockhub.Common.Infrastructure\Stockhub.Common.Infrastructure.csproj" IsAspireProjectResource="false" />
-	<ProjectReference Include="..\..\..\src\Consumers\Stockhub.Consumers\Stockhub.Consumers.csproj" />
+	<ProjectReference Include="..\..\..\src\Consumers\Stockhub.Consumers.MatchingEngine\Stockhub.Consumers.MatchingEngine.csproj" />
 	<ProjectReference Include="..\..\..\src\MigrationService\Stockhub.MigrationService\Stockhub.MigrationService.csproj" />
   </ItemGroup>
 

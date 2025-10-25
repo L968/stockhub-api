@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Stockhub.Modules.Stocks.Application.Features.SearchStocks;
+using Stockhub.Modules.Stocks.Application.Features.FindStocks;
 
 namespace Stockhub.Modules.Stocks.Presentation.Stocks.v1;
 

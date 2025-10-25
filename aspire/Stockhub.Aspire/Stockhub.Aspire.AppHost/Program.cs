@@ -4,7 +4,7 @@ IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(ar
 
 builder.AddProject<Projects.Stockhub_Api>(ServiceNames.Api);
 
-builder.AddProject<Projects.Stockhub_Consumers>(ServiceNames.Consumers);
+builder.AddProject<Projects.Stockhub_Consumers_MatchingEngine>(ServiceNames.ConsumerMatchingEngine);
 
 builder.AddProject<Projects.Stockhub_MigrationService>(ServiceNames.MigrationService);
 

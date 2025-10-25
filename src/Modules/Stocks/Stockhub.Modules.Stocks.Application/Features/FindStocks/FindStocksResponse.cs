@@ -1,4 +1,4 @@
-﻿namespace Stockhub.Modules.Stocks.Application.Features.SearchStocks;
+﻿namespace Stockhub.Modules.Stocks.Application.Features.FindStocks;
 
 public sealed record FindStocksResponse(
     Guid Id,

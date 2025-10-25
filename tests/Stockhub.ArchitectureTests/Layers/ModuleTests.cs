@@ -33,6 +33,7 @@ public class ModuleTests : BaseTest
     public void OrdersModule_ShouldNotHaveDependencyOn_AnyOtherModule()
     {
         string[] otherModules = [UsersNamespace, StocksNamespace];
+        string[] publicApiModules = [StocksPublicApiNamespace];
 
         List<Assembly> ordersAssemblies =
         [
@@ -43,6 +44,8 @@ public class ModuleTests : BaseTest
         ];
 
         Types.InAssemblies(ordersAssemblies)
+            .That()
+            .DoNotHaveDependencyOnAny(publicApiModules)
             .Should()
             .NotHaveDependencyOnAny(otherModules)
             .GetResult()

@@ -1,6 +1,5 @@
 ﻿using Stockhub.Common.Domain.Results;
 using Stockhub.Modules.Stocks.Application.Abstractions;
-using Stockhub.Modules.Stocks.Application.Features.SearchStocks;
 
 namespace Stockhub.Modules.Stocks.Application.Features.FindStocks;
 
