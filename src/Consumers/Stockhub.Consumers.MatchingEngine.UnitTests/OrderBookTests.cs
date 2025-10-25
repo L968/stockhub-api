@@ -33,6 +33,21 @@ public class OrderBookTests
     }
 
     [Fact]
+    public void Add_BuyOrder_Should_Add_To_BuyOrders_List()
+    {
+        // Arrange
+        var book = new OrderBook(_stockId);
+        OrderPlacedEvent buy = CreateOrder(OrderSide.Buy, 100, 10);
+
+        // Act
+        book.Add(buy);
+
+        // Assert
+        Assert.Equal(1, book.TotalOrders);
+        Assert.False(book.IsEmpty);
+    }
+
+    [Fact]
     public void Add_Order_Should_Increase_TotalOrders_And_Set_IsEmpty_False()
     {
         // Arrange
@@ -47,6 +62,84 @@ public class OrderBookTests
         // Assert
         Assert.Equal(2, book.TotalOrders);
         Assert.False(book.IsEmpty);
+    }
+
+    [Fact]
+    public void Add_SellOrder_Should_Add_To_SellOrders_List()
+    {
+        // Arrange
+        var book = new OrderBook(_stockId);
+        OrderPlacedEvent sell = CreateOrder(OrderSide.Sell, 100, 10);
+
+        // Act
+        book.Add(sell);
+
+        // Assert
+        Assert.Equal(1, book.TotalOrders);
+        Assert.False(book.IsEmpty);
+    }
+
+    [Fact]
+    public void Constructor_Should_Set_StockId_Correctly()
+    {
+        // Arrange & Act
+        var book = new OrderBook(_stockId);
+
+        // Assert
+        Assert.Equal(_stockId, book.StockId);
+        Assert.True(book.IsEmpty);
+        Assert.Equal(0, book.TotalOrders);
+    }
+
+    [Fact]
+    public void CreateTrade_Should_Use_SellOrder_Price()
+    {
+        // Arrange
+        var book = new OrderBook(_stockId);
+        OrderPlacedEvent sell = CreateOrder(OrderSide.Sell, 95, 10);
+        OrderPlacedEvent buy = CreateOrder(OrderSide.Buy, 100, 10);
+        book.Add(sell);
+
+        // Act
+        var trades = book.Match(buy).ToList();
+
+        // Assert
+        Assert.Single(trades);
+        Assert.Equal(95, trades[0].Price);
+    }
+
+    [Fact]
+    public void GetOrderStatus_Should_Return_PartiallyFilled_When_Partial_Fill()
+    {
+        // Arrange
+        var book = new OrderBook(_stockId);
+        OrderPlacedEvent sell = CreateOrder(OrderSide.Sell, 100, 10);
+        book.Add(sell);
+
+        OrderPlacedEvent buy = CreateOrder(OrderSide.Buy, 105, 5);
+
+        // Act
+        var trades = book.Match(buy).ToList();
+
+        // Assert
+        Assert.Single(trades);
+        Assert.Equal(5, sell.FilledQuantity);
+        Assert.Equal(OrderStatus.PartiallyFilled, sell.Status);
+        Assert.Equal(5, buy.FilledQuantity);
+        Assert.Equal(OrderStatus.Filled, buy.Status);
+    }
+
+    [Fact]
+    public void GetOrderStatus_Should_Return_Pending_When_No_Filled_Quantity()
+    {
+        // Arrange
+        OrderPlacedEvent order = CreateOrder(OrderSide.Buy, 100, 10, 0, OrderStatus.Pending);
+
+        // Act & Assert
+        var book = new OrderBook(_stockId);
+        book.Add(order);
+
+        Assert.Equal(OrderStatus.Pending, order.Status);
     }
 
     [Fact]
@@ -189,6 +282,79 @@ public class OrderBookTests
     }
 
     [Fact]
+    public void Match_BuyOrder_Should_Respect_Price_Limit()
+    {
+        // Arrange
+        var book = new OrderBook(_stockId);
+        OrderPlacedEvent sell1 = CreateOrder(OrderSide.Sell, 95, 5);
+        OrderPlacedEvent sell2 = CreateOrder(OrderSide.Sell, 100, 5);
+        OrderPlacedEvent sell3 = CreateOrder(OrderSide.Sell, 105, 5);
+
+        book.Add(sell1);
+        book.Add(sell2);
+        book.Add(sell3);
+
+        OrderPlacedEvent buy = CreateOrder(OrderSide.Buy, 100, 10);
+
+        // Act
+        var trades = book.Match(buy).ToList();
+
+        // Assert
+        Assert.Equal(2, trades.Count);
+        Assert.Equal(95, trades[0].Price);
+        Assert.Equal(100, trades[1].Price);
+        Assert.Equal(10, buy.FilledQuantity);
+        Assert.Equal(0, sell3.FilledQuantity);
+    }
+
+    [Fact]
+    public void Match_BuyOrder_Should_Skip_Already_Filled_Sell_Orders()
+    {
+        // Arrange
+        var book = new OrderBook(_stockId);
+        OrderPlacedEvent filledSell = CreateOrder(OrderSide.Sell, 100, 10, 10, OrderStatus.Filled);
+        OrderPlacedEvent pendingSell = CreateOrder(OrderSide.Sell, 100, 10);
+
+        book.Add(filledSell);
+        book.Add(pendingSell);
+
+        OrderPlacedEvent buy = CreateOrder(OrderSide.Buy, 105, 10);
+
+        // Act
+        var trades = book.Match(buy).ToList();
+
+        // Assert
+        Assert.Single(trades);
+        Assert.Equal(pendingSell.OrderId, trades[0].SellOrderId);
+        Assert.Equal(10, pendingSell.FilledQuantity);
+        Assert.Equal(OrderStatus.Filled, pendingSell.Status);
+        Assert.Equal(10, filledSell.FilledQuantity);
+    }
+
+    [Fact]
+    public void Match_BuyOrder_Should_Stop_When_Incoming_Order_Is_Filled()
+    {
+        // Arrange
+        var book = new OrderBook(_stockId);
+        OrderPlacedEvent sell1 = CreateOrder(OrderSide.Sell, 100, 5);
+        OrderPlacedEvent sell2 = CreateOrder(OrderSide.Sell, 100, 5);
+
+        book.Add(sell1);
+        book.Add(sell2);
+
+        OrderPlacedEvent buy = CreateOrder(OrderSide.Buy, 105, 5);
+
+        // Act
+        var trades = book.Match(buy).ToList();
+
+        // Assert
+        Assert.Single(trades);
+        Assert.Equal(5, buy.FilledQuantity);
+        Assert.Equal(OrderStatus.Filled, buy.Status);
+        Assert.Equal(5, sell1.FilledQuantity + sell2.FilledQuantity);
+    }
+
+    [Fact]
     public void Match_BuyOrder_With_HigherPrice_Should_Create_Trade()
     {
         // Arrange
@@ -295,6 +461,79 @@ public class OrderBookTests
     }
 
     [Fact]
+    public void Match_SellOrder_Should_Respect_Price_Limit()
+    {
+        // Arrange
+        var book = new OrderBook(_stockId);
+        OrderPlacedEvent buy1 = CreateOrder(OrderSide.Buy, 105, 5);
+        OrderPlacedEvent buy2 = CreateOrder(OrderSide.Buy, 100, 5);
+        OrderPlacedEvent buy3 = CreateOrder(OrderSide.Buy, 95, 5);
+
+        book.Add(buy1);
+        book.Add(buy2);
+        book.Add(buy3);
+
+        OrderPlacedEvent sell = CreateOrder(OrderSide.Sell, 100, 10);
+
+        // Act
+        var trades = book.Match(sell).ToList();
+
+        // Assert
+        Assert.Equal(2, trades.Count);
+        Assert.Equal(100, trades[0].Price);
+        Assert.Equal(100, trades[1].Price);
+        Assert.Equal(10, sell.FilledQuantity);
+        Assert.Equal(0, buy3.FilledQuantity);
+    }
+
+    [Fact]
+    public void Match_SellOrder_Should_Skip_Already_Filled_Buy_Orders()
+    {
+        // Arrange
+        var book = new OrderBook(_stockId);
+        OrderPlacedEvent filledBuy = CreateOrder(OrderSide.Buy, 100, 10, 10, OrderStatus.Filled);
+        OrderPlacedEvent pendingBuy = CreateOrder(OrderSide.Buy, 100, 10);
+
+        book.Add(filledBuy);
+        book.Add(pendingBuy);
+
+        OrderPlacedEvent sell = CreateOrder(OrderSide.Sell, 95, 10);
+
+        // Act
+        var trades = book.Match(sell).ToList();
+
+        // Assert
+        Assert.Single(trades);
+        Assert.Equal(pendingBuy.OrderId, trades[0].BuyOrderId);
+        Assert.Equal(10, pendingBuy.FilledQuantity);
+        Assert.Equal(OrderStatus.Filled, pendingBuy.Status);
+        Assert.Equal(10, filledBuy.FilledQuantity);
+    }
+
+    [Fact]
+    public void Match_SellOrder_Should_Stop_When_Incoming_Order_Is_Filled()
+    {
+        // Arrange
+        var book = new OrderBook(_stockId);
+        OrderPlacedEvent buy1 = CreateOrder(OrderSide.Buy, 100, 5);
+        OrderPlacedEvent buy2 = CreateOrder(OrderSide.Buy, 100, 5);
+
+        book.Add(buy1);
+        book.Add(buy2);
+
+        OrderPlacedEvent sell = CreateOrder(OrderSide.Sell, 95, 5);
+
+        // Act
+        var trades = book.Match(sell).ToList();
+
+        // Assert
+        Assert.Single(trades);
+        Assert.Equal(5, sell.FilledQuantity);
+        Assert.Equal(OrderStatus.Filled, sell.Status);
+        Assert.Equal(5, buy1.FilledQuantity + buy2.FilledQuantity);
+    }
+
+    [Fact]
     public void Match_SellOrder_With_HigherPrice_Should_Not_Create_Trade()
     {
         // Arrange
@@ -382,5 +621,34 @@ public class OrderBookTests
         Assert.Equal(OrderStatus.Pending, buy.Status);
         Assert.Equal(0, sell.FilledQuantity);
         Assert.Equal(OrderStatus.Pending, sell.Status);
+    }
+
+    [Fact]
+    public void RemoveFilledOrders_Should_Remove_Only_Filled_Orders()
+    {
+        // Arrange
+        var book = new OrderBook(_stockId);
+
+        OrderPlacedEvent filledBuy = CreateOrder(OrderSide.Buy, 100, 10, 10, OrderStatus.Filled);
+        OrderPlacedEvent partialBuy = CreateOrder(OrderSide.Buy, 100, 10, 5, OrderStatus.PartiallyFilled);
+        OrderPlacedEvent pendingBuy = CreateOrder(OrderSide.Buy, 100, 10, 0, OrderStatus.Pending);
+
+        OrderPlacedEvent filledSell = CreateOrder(OrderSide.Sell, 100, 10, 10, OrderStatus.Filled);
+        OrderPlacedEvent partialSell = CreateOrder(OrderSide.Sell, 100, 10, 5, OrderStatus.PartiallyFilled);
+        OrderPlacedEvent pendingSell = CreateOrder(OrderSide.Sell, 100, 10, 0, OrderStatus.Pending);
+
+        book.Add(filledBuy);
+        book.Add(partialBuy);
+        book.Add(pendingBuy);
+        book.Add(filledSell);
+        book.Add(partialSell);
+        book.Add(pendingSell);
+
+        // Act
+        OrderPlacedEvent incoming = CreateOrder(OrderSide.Buy, 90, 1);
+        book.Match(incoming);
+
+        // Assert
+        Assert.Equal(4, book.TotalOrders);
     }
 }
