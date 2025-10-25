@@ -6,13 +6,18 @@ using Microsoft.Extensions.Logging;
 
 namespace Stockhub.Consumers.Consumers;
 
-public abstract class KafkaConsumerBackgroundService<TMessage>(
+internal abstract class KafkaConsumerBackgroundService<TMessage>(
     IServiceProvider serviceProvider,
     ILogger logger,
     string topic,
     ConsumerConfig config
 ) : BackgroundService
 {
+    private readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
     protected abstract Task HandleMessageAsync(TMessage message, IServiceProvider scope, CancellationToken cancellationToken);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -59,6 +64,8 @@ public abstract class KafkaConsumerBackgroundService<TMessage>(
         logger.LogInformation("Consumer {Consumer} finalizado", GetType().Name);
     }
 
-    private static TMessage? Deserialize(string json)
-        => JsonSerializer.Deserialize<TMessage>(json);
+    private TMessage? Deserialize(string json)
+    {
+        return JsonSerializer.Deserialize<TMessage>(json, _jsonOptions);
+    }
 }

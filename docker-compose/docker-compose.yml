@@ -44,8 +44,9 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: stockhub-zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://stockhub-kafka:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://stockhub-kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     networks:
       - stockhub-net
@@ -60,7 +61,7 @@ services:
     ports:
       - "8083:8083"
     environment:
-      BOOTSTRAP_SERVERS: stockhub-kafka:9092
+      BOOTSTRAP_SERVERS: stockhub-kafka:29092
       GROUP_ID: "1"
       CONFIG_STORAGE_TOPIC: stockhub_connect_configs
       OFFSET_STORAGE_TOPIC: stockhub_connect_offsets
@@ -118,7 +119,7 @@ services:
       - "8080:8080"
     environment:
       KAFKA_CLUSTERS_0_NAME: stockhub
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: stockhub-kafka:9092
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: stockhub-kafka:29092
       KAFKA_CLUSTERS_0_ZOOKEEPER: stockhub-zookeeper:2181
       KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: connect
       KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://stockhub-debezium-connect:8083

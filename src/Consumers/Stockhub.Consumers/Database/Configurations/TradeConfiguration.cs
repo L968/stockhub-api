@@ -14,7 +14,6 @@ internal sealed class TradeConfiguration : IEntityTypeConfiguration<Trade>
 
         builder.Property(t => t.Id).HasColumnName("id");
         builder.Property(t => t.StockId).HasColumnName("stock_id");
-        builder.Property(t => t.Symbol).HasColumnName("symbol");
         builder.Property(t => t.BuyerId).HasColumnName("buyer_id");
         builder.Property(t => t.SellerId).HasColumnName("seller_id");
         builder.Property(t => t.BuyOrderId).HasColumnName("buy_order_id");

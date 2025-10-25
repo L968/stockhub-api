@@ -49,6 +49,7 @@ internal sealed class GetMyTradesHandler(
     {
         IQueryable<Trade> query = dbContext.Trades
             .AsNoTracking()
+            .Include(t => t.Stock)
             .Where(t => t.BuyerId == request.UserId || t.SellerId == request.UserId);
 
         if (request.StartDate.HasValue)
@@ -63,7 +64,7 @@ internal sealed class GetMyTradesHandler(
 
         if (!string.IsNullOrWhiteSpace(request.Symbol))
         {
-            query = query.Where(t => t.Symbol == request.Symbol);
+            query = query.Where(t => t.Stock.Symbol == request.Symbol);
         }
 
         return query;
@@ -72,7 +73,7 @@ internal sealed class GetMyTradesHandler(
     private static GetMyTradesResponse MapToResponse(Trade t, Guid userId)
         => new(
             t.Id,
-            t.Symbol,
+            t.Stock.Symbol,
             t.BuyerId == userId ? "BUY" : "SELL",
             t.Price,
             t.Quantity,

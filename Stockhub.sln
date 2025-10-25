@@ -91,6 +91,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Consumers", "Consumers", "{
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stockhub.Consumers", "src\Consumers\Stockhub.Consumers\Stockhub.Consumers.csproj", "{54A9F3E0-CB90-4F7A-A15D-B2E5AAA2BC74}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stockhub.Aspire.AppHost", "aspire\Stockhub.Aspire\Stockhub.Aspire.AppHost\Stockhub.Aspire.AppHost.csproj", "{27A9806E-010E-AD50-0A0F-DD6605AC32A3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -201,6 +203,10 @@ Global
 		{54A9F3E0-CB90-4F7A-A15D-B2E5AAA2BC74}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{54A9F3E0-CB90-4F7A-A15D-B2E5AAA2BC74}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{54A9F3E0-CB90-4F7A-A15D-B2E5AAA2BC74}.Release|Any CPU.Build.0 = Release|Any CPU
+		{27A9806E-010E-AD50-0A0F-DD6605AC32A3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{27A9806E-010E-AD50-0A0F-DD6605AC32A3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{27A9806E-010E-AD50-0A0F-DD6605AC32A3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{27A9806E-010E-AD50-0A0F-DD6605AC32A3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -242,6 +248,7 @@ Global
 		{2933A888-F55D-490E-8DE0-F558E893A790} = {02A31AFC-DB8E-4727-ADB2-6968BB12F0DB}
 		{00379551-9DEC-4708-8395-FDC41DBEE522} = {FFBBE61A-FF2F-4A4E-A41B-2C6F7951E4A0}
 		{54A9F3E0-CB90-4F7A-A15D-B2E5AAA2BC74} = {00379551-9DEC-4708-8395-FDC41DBEE522}
+		{27A9806E-010E-AD50-0A0F-DD6605AC32A3} = {5D569518-D48A-4222-AAAC-0921237918BD}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {80DA3F9A-1C03-4B39-B34C-BE190B7C7983}

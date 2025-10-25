@@ -5,16 +5,15 @@ using Stockhub.Consumers.Entities;
 
 namespace Stockhub.Consumers.Database;
 
-internal sealed class OrdersDbContext(DbContextOptions<OrdersDbContext> options) : DbContext(options)
+internal sealed class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContext(options)
 {
-    public DbSet<Order> Orders { get; set; }
-    public DbSet<Trade> Trades { get; set; }
+    public DbSet<User> Users { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.HasDefaultSchema(Schemas.Orders);
+        modelBuilder.HasDefaultSchema(Schemas.Users);
 
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(OrdersDbContext).Assembly);
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(UsersDbContext).Assembly);
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

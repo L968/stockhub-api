@@ -1,10 +1,10 @@
-﻿using Stockhub.Common.Domain;
+﻿using Stockhub.Consumers.Entities;
 
-namespace Stockhub.Consumers.Entities;
+namespace Stockhub.Consumers.Events.OrderPlaced;
 
-internal sealed class Order : IAuditableEntity
+internal sealed record OrderPlacedEvent
 {
-    public Guid Id { get; set; }
+    public Guid OrderId { get; set; }
     public Guid UserId { get; set; }
     public Guid StockId { get; set; }
     public OrderSide Side { get; set; }

@@ -1,4 +1,5 @@
-﻿using Stockhub.Modules.Orders.Application.Features.Orders.PlaceOrder;
+﻿using Microsoft.Extensions.Primitives;
+using Stockhub.Modules.Orders.Application.Features.Orders.PlaceOrder;
 using Stockhub.Modules.Orders.Domain.Orders;
 
 namespace Stockhub.Modules.Orders.Presentation.Orders.v1;
@@ -11,10 +12,17 @@ internal sealed class PlaceOrderEndpoint : IEndpoint
             async (
                 CreateOrderRequest request,
                 ISender sender,
+                HttpContext context,
                 CancellationToken cancellationToken) =>
             {
+                if (!context.Request.Headers.TryGetValue("X-User-Id", out StringValues userIdHeader)
+                    || !Guid.TryParse(userIdHeader, out Guid userId))
+                {
+                    return Results.BadRequest(new { error = "Missing or invalid X-User-Id header." });
+                }
+
                 var command = new PlaceOrderCommand(
-                    Guid.CreateVersion7(),
+                    userId,
                     request.StockId,
                     request.Side,
                     request.Price,

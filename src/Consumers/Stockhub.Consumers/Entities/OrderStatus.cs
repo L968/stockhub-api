@@ -1,6 +1,6 @@
 ﻿namespace Stockhub.Consumers.Entities;
 
-public enum OrderStatus
+internal enum OrderStatus
 {
     Pending = 0,
     PartiallyFilled = 1,

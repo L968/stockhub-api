@@ -14,7 +14,6 @@ internal sealed class TradeConfiguration : IEntityTypeConfiguration<Trade>
 
         builder.Property(t => t.Id).HasColumnName("id");
         builder.Property(t => t.StockId).HasColumnName("stock_id");
-        builder.Property(t => t.Symbol).HasColumnName("symbol");
         builder.Property(t => t.BuyerId).HasColumnName("buyer_id");
         builder.Property(t => t.SellerId).HasColumnName("seller_id");
         builder.Property(t => t.BuyOrderId).HasColumnName("buy_order_id");
@@ -26,5 +25,11 @@ internal sealed class TradeConfiguration : IEntityTypeConfiguration<Trade>
         builder.HasIndex(t => t.StockId);
         builder.HasIndex(t => t.BuyerId);
         builder.HasIndex(t => t.SellerId);
+
+        builder
+           .HasOne(t => t.Stock)
+           .WithMany()
+           .HasForeignKey(t => t.StockId)
+           .OnDelete(DeleteBehavior.Restrict);
     }
 }
