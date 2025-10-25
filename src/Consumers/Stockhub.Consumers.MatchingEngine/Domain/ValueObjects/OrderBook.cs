@@ -44,6 +44,7 @@ internal sealed class OrderBook(Guid stockId)
         var matches = _sellOrders
             .Where(s => s.Price <= incoming.Price && s.FilledQuantity < s.Quantity)
             .OrderBy(s => s.Price)
+            .ThenBy(s => s.CreatedAtUtc)
             .ToList();
 
         foreach (OrderPlacedEvent? sell in matches)
@@ -83,6 +84,7 @@ internal sealed class OrderBook(Guid stockId)
         var matches = _buyOrders
             .Where(b => b.Price >= incoming.Price && b.FilledQuantity < b.Quantity)
             .OrderByDescending(b => b.Price)
+            .ThenBy(s => s.CreatedAtUtc)
             .ToList();
 
         foreach (OrderPlacedEvent? buy in matches)
