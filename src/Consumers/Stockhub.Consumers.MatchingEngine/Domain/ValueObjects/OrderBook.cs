@@ -47,33 +47,26 @@ internal sealed class OrderBook(Guid stockId)
             .ThenBy(s => s.CreatedAtUtc)
             .ToList();
 
-        foreach (OrderPlacedEvent? sell in matches)
+        foreach (OrderPlacedEvent? sellOrder in matches)
         {
-            if (incoming.Quantity - incoming.FilledQuantity <= 0)
+            if (IsFullyFilled(incoming))
             {
                 break;
             }
 
-            int quantityToFill = Math.Min(incoming.Quantity - incoming.FilledQuantity, sell.Quantity - sell.FilledQuantity);
+            int quantityToFill = GetQuantityToFill(incoming, sellOrder);
 
-            trades.Add(CreateTrade(incoming, sell, quantityToFill));
+            trades.Add(CreateTrade(incoming, sellOrder, quantityToFill));
 
             incoming.FilledQuantity += quantityToFill;
-            sell.FilledQuantity += quantityToFill;
+            sellOrder.FilledQuantity += quantityToFill;
 
-            sell.Status = (sell.FilledQuantity == sell.Quantity) ? OrderStatus.Filled : OrderStatus.PartiallyFilled;
+            sellOrder.Status = GetOrderStatus(sellOrder);
         }
 
-        if (incoming.FilledQuantity == incoming.Quantity && trades.Count > 0)
-        {
-            incoming.Status = OrderStatus.Filled;
-        }
-        else if (incoming.FilledQuantity > 0 && trades.Count > 0)
-        {
-            incoming.Status = OrderStatus.PartiallyFilled;
-        }
+        incoming.Status = GetOrderStatus(incoming);
 
-        _sellOrders.RemoveAll(s => s.FilledQuantity == s.Quantity);
+        _sellOrders.RemoveAll(s => s.Status == OrderStatus.Filled);
 
         return trades;
     }
@@ -87,33 +80,26 @@ internal sealed class OrderBook(Guid stockId)
             .ThenBy(s => s.CreatedAtUtc)
             .ToList();
 
-        foreach (OrderPlacedEvent? buy in matches)
+        foreach (OrderPlacedEvent? buyOrder in matches)
         {
-            if (incoming.Quantity - incoming.FilledQuantity <= 0)
+            if (IsFullyFilled(incoming))
             {
                 break;
             }
 
-            int quantityToFill = Math.Min(incoming.Quantity - incoming.FilledQuantity, buy.Quantity - buy.FilledQuantity);
+            int quantityToFill = GetQuantityToFill(incoming, buyOrder);
 
-            trades.Add(CreateTrade(buy, incoming, quantityToFill));
+            trades.Add(CreateTrade(buyOrder, incoming, quantityToFill));
 
             incoming.FilledQuantity += quantityToFill;
-            buy.FilledQuantity += quantityToFill;
+            buyOrder.FilledQuantity += quantityToFill;
 
-            buy.Status = (buy.FilledQuantity == buy.Quantity) ? OrderStatus.Filled : OrderStatus.PartiallyFilled;
+            buyOrder.Status = GetOrderStatus(buyOrder);
         }
 
-        if (incoming.FilledQuantity == incoming.Quantity && trades.Count > 0)
-        {
-            incoming.Status = OrderStatus.Filled;
-        }
-        else if (incoming.FilledQuantity > 0 && trades.Count > 0)
-        {
-            incoming.Status = OrderStatus.PartiallyFilled;
-        }
+        incoming.Status = GetOrderStatus(incoming);
 
-        _buyOrders.RemoveAll(b => b.FilledQuantity == b.Quantity);
+        _buyOrders.RemoveAll(s => s.Status == OrderStatus.Filled);
 
         return trades;
     }
@@ -134,5 +120,33 @@ internal sealed class OrderBook(Guid stockId)
             price: sellOrder.Price,
             quantity: quantity
         );
+    }
+
+    private static bool IsFullyFilled(OrderPlacedEvent order)
+    {
+        return order.FilledQuantity >= order.Quantity;
+    }
+
+    private static int GetQuantityToFill(OrderPlacedEvent incoming, OrderPlacedEvent opposite)
+    {
+        return Math.Min(
+            incoming.Quantity - incoming.FilledQuantity,
+            opposite.Quantity - opposite.FilledQuantity
+        );
+    }
+
+    private static OrderStatus GetOrderStatus(OrderPlacedEvent order)
+    {
+        if (order.FilledQuantity == 0)
+        {
+            return OrderStatus.Pending;
+        }
+
+        if (order.FilledQuantity == order.Quantity)
+        {
+            return OrderStatus.Filled;
+        }
+
+        return OrderStatus.PartiallyFilled;
     }
 }
