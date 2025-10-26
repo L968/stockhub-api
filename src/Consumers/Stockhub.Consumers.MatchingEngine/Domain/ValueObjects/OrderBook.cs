@@ -114,7 +114,7 @@ internal sealed class OrderBook(Guid stockId)
 
     private void RemoveFilledOrders()
     {
-        _buyOrders.RemoveAll(o => o.Status == OrderStatus.Filled);
-        _sellOrders.RemoveAll(o => o.Status == OrderStatus.Filled);
+        _buyOrders.RemoveAll(o => o.Status == OrderStatus.Filled || o.Status == OrderStatus.Cancelled);
+        _sellOrders.RemoveAll(o => o.Status == OrderStatus.Filled || o.Status == OrderStatus.Cancelled);
     }
 }

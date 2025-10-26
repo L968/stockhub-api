@@ -41,6 +41,11 @@ internal sealed class Order : IAuditableEntity
             return;
         }
 
+        if (Status == OrderStatus.Filled)
+        {
+            throw new InvalidOperationException("Cannot cancel a fully filled order.");
+        }
+
         IsCancelled = true;
     }
 }

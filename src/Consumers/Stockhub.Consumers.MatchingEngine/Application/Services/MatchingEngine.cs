@@ -22,21 +22,21 @@ internal sealed class MatchingEngine(
         logger.LogInformation("Matching Engine started with {Count} existing orders", totalOrders);
     }
 
-    public async Task ProcessAsync(Order order, CancellationToken cancellationToken)
+    public async Task ProcessAsync(Order incomingOrder, CancellationToken cancellationToken)
     {
-        OrderBook orderBook = GetOrCreateOrderBook(order.StockId);
-        orderBook.Add(order);
+        OrderBook orderBook = GetOrCreateOrderBook(incomingOrder.StockId);
+        orderBook.Add(incomingOrder);
 
-        IEnumerable<Trade> trades = orderBook.Match(order);
+        IEnumerable<Trade> trades = orderBook.Match(incomingOrder);
 
         foreach (Trade trade in trades)
         {
+            await ApplyTradeEffectsAsync(trade, cancellationToken);
+
             logger.LogInformation(
                 "Trade executed: {StockId} | Buy {BuyOrderId} ↔ Sell {SellOrderId} @ {Price} x {Quantity}",
                 trade.StockId, trade.BuyOrderId, trade.SellOrderId, trade.Price, trade.Quantity
             );
-
-            await ApplyTradeEffectsAsync(trade, cancellationToken);
         }
 
         await ordersDbContext.SaveChangesAsync(cancellationToken);
@@ -44,11 +44,12 @@ internal sealed class MatchingEngine(
 
         if (orderBook.IsEmpty)
         {
-            _orderBooks.Remove(order.StockId);
+            _orderBooks.Remove(incomingOrder.StockId);
         }
     }
 
-    public async Task ApplyTradeEffectsAsync(Trade trade, CancellationToken cancellationToken)
+
+    private async Task ApplyTradeEffectsAsync(Trade trade, CancellationToken cancellationToken)
     {
         ordersDbContext.Trades.Add(trade);
 
