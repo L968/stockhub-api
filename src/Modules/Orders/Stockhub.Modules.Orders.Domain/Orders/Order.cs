@@ -13,7 +13,7 @@ public sealed class Order : IAuditableEntity
     public decimal Price { get; private set; }
     public int Quantity { get; private set; }
     public int FilledQuantity { get; private set; }
-    public OrderStatus Status { get; private set; }
+    public bool IsCancelled { get; private set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 
@@ -30,8 +30,16 @@ public sealed class Order : IAuditableEntity
         Price = price;
         Quantity = quantity;
         FilledQuantity = 0;
-        Status = OrderStatus.Pending;
+        IsCancelled = false;
     }
+
+    public OrderStatus Status => IsCancelled switch
+    {
+        true => OrderStatus.Cancelled,
+        _ when FilledQuantity == 0 => OrderStatus.Pending,
+        _ when FilledQuantity < Quantity => OrderStatus.PartiallyFilled,
+        _ => OrderStatus.Filled
+    };
 
     public Result Cancel()
     {
@@ -40,7 +48,7 @@ public sealed class Order : IAuditableEntity
             return Result.Failure(OrderErrors.CannotCancel);
         }
 
-        Status = OrderStatus.Cancelled;
+        IsCancelled = true;
         return Result.Success();
     }
 }

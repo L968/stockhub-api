@@ -16,7 +16,7 @@ namespace Stockhub.Modules.Orders.Infrastructure.Database.Migrations
                 name: "orders");
 
             migrationBuilder.CreateTable(
-                name: "stock",
+                name: "mv_stock",
                 schema: "orders",
                 columns: table => new
                 {
@@ -29,33 +29,11 @@ namespace Stockhub.Modules.Orders.Infrastructure.Database.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_stock", x => x.id);
+                    table.PrimaryKey("PK_mv_stock", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
-                name: "trade",
-                schema: "orders",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    symbol = table.Column<string>(type: "text", nullable: false),
-                    buyer_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    seller_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    buy_order_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    sell_order_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    price = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                    quantity = table.Column<int>(type: "integer", nullable: false),
-                    executed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_trade", x => x.id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "user",
+                name: "mv_user",
                 schema: "orders",
                 columns: table => new
                 {
@@ -68,7 +46,34 @@ namespace Stockhub.Modules.Orders.Infrastructure.Database.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_user", x => x.id);
+                    table.PrimaryKey("PK_mv_user", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "trade",
+                schema: "orders",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    stock_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    buyer_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    seller_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    buy_order_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    sell_order_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    price = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    quantity = table.Column<int>(type: "integer", nullable: false),
+                    executed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_trade", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_trade_mv_stock_stock_id",
+                        column: x => x.stock_id,
+                        principalSchema: "orders",
+                        principalTable: "mv_stock",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -83,7 +88,7 @@ namespace Stockhub.Modules.Orders.Infrastructure.Database.Migrations
                     price = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
                     quantity = table.Column<int>(type: "integer", nullable: false),
                     filled_quantity = table.Column<int>(type: "integer", nullable: false),
-                    status = table.Column<int>(type: "integer", nullable: false),
+                    is_cancelled = table.Column<bool>(type: "boolean", nullable: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
@@ -91,17 +96,17 @@ namespace Stockhub.Modules.Orders.Infrastructure.Database.Migrations
                 {
                     table.PrimaryKey("PK_order", x => x.id);
                     table.ForeignKey(
-                        name: "FK_order_stock_stock_id",
+                        name: "FK_order_mv_stock_stock_id",
                         column: x => x.stock_id,
                         principalSchema: "orders",
-                        principalTable: "stock",
+                        principalTable: "mv_stock",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_order_user_user_id",
+                        name: "FK_order_mv_user_user_id",
                         column: x => x.user_id,
                         principalSchema: "orders",
-                        principalTable: "user",
+                        principalTable: "mv_user",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                 });
@@ -123,17 +128,17 @@ namespace Stockhub.Modules.Orders.Infrastructure.Database.Migrations
                 {
                     table.PrimaryKey("PK_portfolio", x => x.id);
                     table.ForeignKey(
-                        name: "FK_portfolio_stock_stock_id",
+                        name: "FK_portfolio_mv_stock_stock_id",
                         column: x => x.stock_id,
                         principalSchema: "orders",
-                        principalTable: "stock",
+                        principalTable: "mv_stock",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_portfolio_user_user_id",
+                        name: "FK_portfolio_mv_user_user_id",
                         column: x => x.user_id,
                         principalSchema: "orders",
-                        principalTable: "user",
+                        principalTable: "mv_user",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                 });
@@ -161,6 +166,24 @@ namespace Stockhub.Modules.Orders.Infrastructure.Database.Migrations
                 schema: "orders",
                 table: "portfolio",
                 column: "user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_trade_buyer_id",
+                schema: "orders",
+                table: "trade",
+                column: "buyer_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_trade_seller_id",
+                schema: "orders",
+                table: "trade",
+                column: "seller_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_trade_stock_id",
+                schema: "orders",
+                table: "trade",
+                column: "stock_id");
         }
 
         /// <inheritdoc />
@@ -179,11 +202,11 @@ namespace Stockhub.Modules.Orders.Infrastructure.Database.Migrations
                 schema: "orders");
 
             migrationBuilder.DropTable(
-                name: "stock",
+                name: "mv_user",
                 schema: "orders");
 
             migrationBuilder.DropTable(
-                name: "user",
+                name: "mv_stock",
                 schema: "orders");
         }
     }

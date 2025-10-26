@@ -24,21 +24,21 @@ internal sealed class OrderBook(Guid stockId)
         }
     }
 
-    public IEnumerable<Trade> Match(Order incoming)
+    public IEnumerable<Trade> Match(Order incomingOrder)
     {
-        List<Trade> trades = incoming.Side == OrderSide.Buy
-            ? MatchIncomingBuyOrder(incoming)
-            : MatchIncomingSellOrder(incoming);
+        List<Trade> trades = incomingOrder.Side == OrderSide.Buy
+            ? MatchIncomingBuyOrder(incomingOrder)
+            : MatchIncomingSellOrder(incomingOrder);
 
         RemoveFilledOrders();
 
         return trades;
     }
 
-    private List<Trade> MatchIncomingBuyOrder(Order incoming)
+    private List<Trade> MatchIncomingBuyOrder(Order incomingOrder)
     {
-        List<Order> matches = FindMatchingSellOrders(incoming);
-        return ExecuteMatches(incoming, matches);
+        List<Order> matches = FindMatchingSellOrders(incomingOrder);
+        return ExecuteMatches(incomingOrder, matches);
     }
 
     private List<Trade> MatchIncomingSellOrder(Order incoming)
@@ -65,30 +65,27 @@ internal sealed class OrderBook(Guid stockId)
             .ToList();
     }
 
-    private List<Trade> ExecuteMatches(Order incoming, List<Order> oppositeOrders)
+    private List<Trade> ExecuteMatches(Order incomingOrder, List<Order> oppositeOrders)
     {
         var trades = new List<Trade>();
 
         foreach (Order oppositeOrder in oppositeOrders)
         {
-            if (incoming.Status == OrderStatus.Filled)
+            if (incomingOrder.Status == OrderStatus.Filled)
             {
                 break;
             }
 
-            int quantityToFill = GetQuantityToFill(incoming, oppositeOrder);
+            int quantityToFill = GetQuantityToFill(incomingOrder, oppositeOrder);
 
-            Trade trade = incoming.Side == OrderSide.Buy
-                ? CreateTrade(incoming, oppositeOrder, quantityToFill)
-                : CreateTrade(oppositeOrder, incoming, quantityToFill);
+            Trade trade = incomingOrder.Side == OrderSide.Buy
+                ? CreateTrade(incomingOrder, oppositeOrder, quantityToFill)
+                : CreateTrade(oppositeOrder, incomingOrder, quantityToFill);
 
             trades.Add(trade);
 
-            incoming.FilledQuantity += quantityToFill;
-            oppositeOrder.FilledQuantity += quantityToFill;
-
-            oppositeOrder.Status = GetOrderStatus(oppositeOrder);
-            incoming.Status = GetOrderStatus(incoming);
+            incomingOrder.Fill(quantityToFill);
+            oppositeOrder.Fill(quantityToFill);
         }
 
         return trades;
@@ -107,27 +104,12 @@ internal sealed class OrderBook(Guid stockId)
         );
     }
 
-    private static int GetQuantityToFill(Order incoming, Order opposite)
+    private static int GetQuantityToFill(Order incomingOrder, Order oppositeOrder)
     {
         return Math.Min(
-            incoming.Quantity - incoming.FilledQuantity,
-            opposite.Quantity - opposite.FilledQuantity
+            incomingOrder.Quantity - incomingOrder.FilledQuantity,
+            oppositeOrder.Quantity - oppositeOrder.FilledQuantity
         );
-    }
-
-    private static OrderStatus GetOrderStatus(Order order)
-    {
-        if (order.FilledQuantity == 0)
-        {
-            return OrderStatus.Pending;
-        }
-
-        if (order.FilledQuantity == order.Quantity)
-        {
-            return OrderStatus.Filled;
-        }
-
-        return OrderStatus.PartiallyFilled;
     }
 
     private void RemoveFilledOrders()

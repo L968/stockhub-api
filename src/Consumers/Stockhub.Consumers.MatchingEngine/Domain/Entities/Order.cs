@@ -12,7 +12,35 @@ internal sealed class Order : IAuditableEntity
     public decimal Price { get; set; }
     public int Quantity { get; set; }
     public int FilledQuantity { get; set; }
-    public OrderStatus Status { get; set; }
+    public bool IsCancelled { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
+
+    public OrderStatus Status => IsCancelled switch
+    {
+        true => OrderStatus.Cancelled,
+        _ when FilledQuantity == 0 => OrderStatus.Pending,
+        _ when FilledQuantity < Quantity => OrderStatus.PartiallyFilled,
+        _ => OrderStatus.Filled
+    };
+
+    public void Fill(int quantity)
+    {
+        if (IsCancelled)
+        {
+            throw new InvalidOperationException("Cannot fill a cancelled order.");
+        }
+
+        FilledQuantity = Math.Min(FilledQuantity + quantity, Quantity);
+    }
+
+    public void Cancel()
+    {
+        if (IsCancelled)
+        {
+            return;
+        }
+
+        IsCancelled = true;
+    }
 }

@@ -9,7 +9,7 @@ internal sealed class OrderEventPayload
     public string Price { get; set; } = default!;
     public int Quantity { get; set; }
     public int Filled_Quantity { get; set; }
-    public int Status { get; set; }
+    public bool Is_Cancelled { get; set; }
     public DateTime Created_At { get; set; }
     public DateTime Updated_At { get; set; }
 }

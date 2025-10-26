@@ -66,16 +66,8 @@ internal sealed class MatchingEngine(
             return;
         }
 
-        buyOrder.FilledQuantity += trade.Quantity;
-        sellOrder.FilledQuantity += trade.Quantity;
-
-        buyOrder.Status = buyOrder.FilledQuantity >= buyOrder.Quantity
-            ? OrderStatus.Filled
-            : OrderStatus.PartiallyFilled;
-
-        sellOrder.Status = sellOrder.FilledQuantity >= sellOrder.Quantity
-            ? OrderStatus.Filled
-            : OrderStatus.PartiallyFilled;
+        buyOrder.Fill(trade.Quantity);
+        sellOrder.Fill(trade.Quantity);
 
         buyer.CurrentBalance -= totalValue;
         seller.CurrentBalance += totalValue;
@@ -101,7 +93,7 @@ internal sealed class MatchingEngine(
                 Price = order.Price,
                 Quantity = order.Quantity,
                 FilledQuantity = order.FilledQuantity,
-                Status = order.Status,
+                IsCancelled = order.IsCancelled,
                 CreatedAtUtc = order.CreatedAtUtc,
                 UpdatedAtUtc = order.UpdatedAtUtc
             });

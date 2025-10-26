@@ -12,7 +12,7 @@ using Stockhub.Modules.Orders.Infrastructure.Database;
 namespace Stockhub.Modules.Orders.Infrastructure.Database.Migrations
 {
     [DbContext(typeof(OrdersDbContext))]
-    [Migration("20251019035846_Init")]
+    [Migration("20251026150219_Init")]
     partial class Init
     {
         /// <inheritdoc />
@@ -21,7 +21,7 @@ namespace Stockhub.Modules.Orders.Infrastructure.Database.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("orders")
-                .HasAnnotation("ProductVersion", "9.0.9")
+                .HasAnnotation("ProductVersion", "9.0.10")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -41,6 +41,10 @@ namespace Stockhub.Modules.Orders.Infrastructure.Database.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("filled_quantity");
 
+                    b.Property<bool>("IsCancelled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_cancelled");
+
                     b.Property<decimal>("Price")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
@@ -53,10 +57,6 @@ namespace Stockhub.Modules.Orders.Infrastructure.Database.Migrations
                     b.Property<int>("Side")
                         .HasColumnType("integer")
                         .HasColumnName("side");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer")
-                        .HasColumnName("status");
 
                     b.Property<Guid>("StockId")
                         .HasColumnType("uuid")
@@ -152,7 +152,7 @@ namespace Stockhub.Modules.Orders.Infrastructure.Database.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("stock", "orders");
+                    b.ToTable("mv_stock", "orders");
                 });
 
             modelBuilder.Entity("Stockhub.Modules.Orders.Domain.Trades.Trade", b =>
@@ -169,10 +169,6 @@ namespace Stockhub.Modules.Orders.Infrastructure.Database.Migrations
                     b.Property<Guid>("BuyerId")
                         .HasColumnType("uuid")
                         .HasColumnName("buyer_id");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
 
                     b.Property<DateTime>("ExecutedAt")
                         .HasColumnType("timestamp with time zone")
@@ -195,16 +191,17 @@ namespace Stockhub.Modules.Orders.Infrastructure.Database.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("seller_id");
 
-                    b.Property<string>("Symbol")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("symbol");
-
-                    b.Property<DateTime>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
+                    b.Property<Guid>("StockId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("stock_id");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BuyerId");
+
+                    b.HasIndex("SellerId");
+
+                    b.HasIndex("StockId");
 
                     b.ToTable("trade", "orders");
                 });
@@ -241,7 +238,7 @@ namespace Stockhub.Modules.Orders.Infrastructure.Database.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("user", "orders");
+                    b.ToTable("mv_user", "orders");
                 });
 
             modelBuilder.Entity("Stockhub.Modules.Orders.Domain.Orders.Order", b =>
@@ -272,6 +269,17 @@ namespace Stockhub.Modules.Orders.Infrastructure.Database.Migrations
                     b.HasOne("Stockhub.Modules.Orders.Domain.Users.User", null)
                         .WithMany("PortfolioEntries")
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Stock");
+                });
+
+            modelBuilder.Entity("Stockhub.Modules.Orders.Domain.Trades.Trade", b =>
+                {
+                    b.HasOne("Stockhub.Modules.Orders.Domain.Stocks.Stock", "Stock")
+                        .WithMany()
+                        .HasForeignKey("StockId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 

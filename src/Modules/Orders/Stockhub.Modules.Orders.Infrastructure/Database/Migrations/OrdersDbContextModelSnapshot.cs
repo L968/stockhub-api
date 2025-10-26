@@ -38,6 +38,10 @@ namespace Stockhub.Modules.Orders.Infrastructure.Database.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("filled_quantity");
 
+                    b.Property<bool>("IsCancelled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_cancelled");
+
                     b.Property<decimal>("Price")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
@@ -50,10 +54,6 @@ namespace Stockhub.Modules.Orders.Infrastructure.Database.Migrations
                     b.Property<int>("Side")
                         .HasColumnType("integer")
                         .HasColumnName("side");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer")
-                        .HasColumnName("status");
 
                     b.Property<Guid>("StockId")
                         .HasColumnType("uuid")

@@ -19,7 +19,7 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(o => o.Price).HasColumnName("price").HasPrecision(18, 2);
         builder.Property(o => o.Quantity).HasColumnName("quantity");
         builder.Property(o => o.FilledQuantity).HasColumnName("filled_quantity");
-        builder.Property(o => o.Status).HasColumnName("status");
+        builder.Property(o => o.IsCancelled).HasColumnName("is_cancelled");
         builder.Property(o => o.CreatedAtUtc).HasColumnName("created_at");
         builder.Property(o => o.UpdatedAtUtc).HasColumnName("updated_at");
 

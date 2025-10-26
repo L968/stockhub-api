@@ -25,7 +25,7 @@ internal sealed class OrderPlacedMapper
             Price = price,
             Quantity = after.Quantity,
             FilledQuantity = after.Filled_Quantity,
-            Status = (OrderStatus)after.Status,
+            IsCancelled = after.Is_Cancelled,
             CreatedAtUtc = after.Created_At,
             UpdatedAtUtc = after.Updated_At
         };

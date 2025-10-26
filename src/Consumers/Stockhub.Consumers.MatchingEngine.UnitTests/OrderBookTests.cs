@@ -12,8 +12,7 @@ public class OrderBookTests
         OrderSide side,
         decimal price,
         int quantity,
-        int filledQuantity = 0,
-        OrderStatus status = OrderStatus.Pending
+        int filledQuantity = 0
         )
     {
         return new Order
@@ -25,7 +24,7 @@ public class OrderBookTests
             Price = price,
             Quantity = quantity,
             FilledQuantity = filledQuantity,
-            Status = status,
+            IsCancelled = false,
             CreatedAtUtc = DateTime.UtcNow,
             UpdatedAtUtc = DateTime.UtcNow
         };
@@ -132,7 +131,7 @@ public class OrderBookTests
     public void GetOrderStatus_Should_Return_Pending_When_No_Filled_Quantity()
     {
         // Arrange
-        Order order = CreateOrder(OrderSide.Buy, 100, 10, 0, OrderStatus.Pending);
+        Order order = CreateOrder(OrderSide.Buy, 100, 10, 0);
 
         // Act & Assert
         var book = new OrderBook(_stockId);
@@ -311,7 +310,7 @@ public class OrderBookTests
     {
         // Arrange
         var book = new OrderBook(_stockId);
-        Order filledSell = CreateOrder(OrderSide.Sell, 100, 10, 10, OrderStatus.Filled);
+        Order filledSell = CreateOrder(OrderSide.Sell, 100, 10, 10);
         Order pendingSell = CreateOrder(OrderSide.Sell, 100, 10);
 
         book.Add(filledSell);
@@ -490,7 +489,7 @@ public class OrderBookTests
     {
         // Arrange
         var book = new OrderBook(_stockId);
-        Order filledBuy = CreateOrder(OrderSide.Buy, 100, 10, 10, OrderStatus.Filled);
+        Order filledBuy = CreateOrder(OrderSide.Buy, 100, 10, 10);
         Order pendingBuy = CreateOrder(OrderSide.Buy, 100, 10);
 
         book.Add(filledBuy);
@@ -628,13 +627,13 @@ public class OrderBookTests
         // Arrange
         var book = new OrderBook(_stockId);
 
-        Order filledBuy = CreateOrder(OrderSide.Buy, 100, 10, 10, OrderStatus.Filled);
-        Order partialBuy = CreateOrder(OrderSide.Buy, 100, 10, 5, OrderStatus.PartiallyFilled);
-        Order pendingBuy = CreateOrder(OrderSide.Buy, 100, 10, 0, OrderStatus.Pending);
+        Order filledBuy = CreateOrder(OrderSide.Buy, 100, 10, 10);
+        Order partialBuy = CreateOrder(OrderSide.Buy, 100, 10, 5);
+        Order pendingBuy = CreateOrder(OrderSide.Buy, 100, 10, 0);
 
-        Order filledSell = CreateOrder(OrderSide.Sell, 100, 10, 10, OrderStatus.Filled);
-        Order partialSell = CreateOrder(OrderSide.Sell, 100, 10, 5, OrderStatus.PartiallyFilled);
-        Order pendingSell = CreateOrder(OrderSide.Sell, 100, 10, 0, OrderStatus.Pending);
+        Order filledSell = CreateOrder(OrderSide.Sell, 100, 10, 10);
+        Order partialSell = CreateOrder(OrderSide.Sell, 100, 10, 5);
+        Order pendingSell = CreateOrder(OrderSide.Sell, 100, 10, 0);
 
         book.Add(filledBuy);
         book.Add(partialBuy);
