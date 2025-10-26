@@ -1,19 +1,18 @@
-﻿using Stockhub.Consumers.MatchingEngine.Domain.Enums;
-using Stockhub.Consumers.MatchingEngine.Domain.Events.OrderPlaced;
-using Stockhub.Consumers.MatchingEngine.Domain.Entities;
+﻿using Stockhub.Consumers.MatchingEngine.Domain.Entities;
+using Stockhub.Consumers.MatchingEngine.Domain.Enums;
 
 namespace Stockhub.Consumers.MatchingEngine.Domain.ValueObjects;
 
 internal sealed class OrderBook(Guid stockId)
 {
-    private readonly List<OrderPlacedEvent> _buyOrders = [];
-    private readonly List<OrderPlacedEvent> _sellOrders = [];
+    private readonly List<Order> _buyOrders = [];
+    private readonly List<Order> _sellOrders = [];
 
     public Guid StockId { get; } = stockId;
     public bool IsEmpty => !_buyOrders.Any() && !_sellOrders.Any();
     public int TotalOrders => _buyOrders.Count + _sellOrders.Count;
 
-    public void Add(OrderPlacedEvent order)
+    public void Add(Order order)
     {
         if (order.Side == OrderSide.Buy)
         {
@@ -25,7 +24,7 @@ internal sealed class OrderBook(Guid stockId)
         }
     }
 
-    public IEnumerable<Trade> Match(OrderPlacedEvent incoming)
+    public IEnumerable<Trade> Match(Order incoming)
     {
         List<Trade> trades = incoming.Side == OrderSide.Buy
             ? MatchIncomingBuyOrder(incoming)
@@ -36,19 +35,19 @@ internal sealed class OrderBook(Guid stockId)
         return trades;
     }
 
-    private List<Trade> MatchIncomingBuyOrder(OrderPlacedEvent incoming)
+    private List<Trade> MatchIncomingBuyOrder(Order incoming)
     {
-        List<OrderPlacedEvent> matches = FindMatchingSellOrders(incoming);
+        List<Order> matches = FindMatchingSellOrders(incoming);
         return ExecuteMatches(incoming, matches);
     }
 
-    private List<Trade> MatchIncomingSellOrder(OrderPlacedEvent incoming)
+    private List<Trade> MatchIncomingSellOrder(Order incoming)
     {
-        List<OrderPlacedEvent> matches = FindMatchingBuyOrders(incoming);
+        List<Order> matches = FindMatchingBuyOrders(incoming);
         return ExecuteMatches(incoming, matches);
     }
 
-    private List<OrderPlacedEvent> FindMatchingBuyOrders(OrderPlacedEvent sellOrder)
+    private List<Order> FindMatchingBuyOrders(Order sellOrder)
     {
         return _buyOrders
             .Where(b => b.Price >= sellOrder.Price && b.FilledQuantity < b.Quantity)
@@ -57,7 +56,7 @@ internal sealed class OrderBook(Guid stockId)
             .ToList();
     }
 
-    private List<OrderPlacedEvent> FindMatchingSellOrders(OrderPlacedEvent buyOrder)
+    private List<Order> FindMatchingSellOrders(Order buyOrder)
     {
         return _sellOrders
             .Where(s => s.Price <= buyOrder.Price && s.FilledQuantity < s.Quantity)
@@ -66,11 +65,11 @@ internal sealed class OrderBook(Guid stockId)
             .ToList();
     }
 
-    private List<Trade> ExecuteMatches(OrderPlacedEvent incoming, List<OrderPlacedEvent> oppositeOrders)
+    private List<Trade> ExecuteMatches(Order incoming, List<Order> oppositeOrders)
     {
         var trades = new List<Trade>();
 
-        foreach (OrderPlacedEvent oppositeOrder in oppositeOrders)
+        foreach (Order oppositeOrder in oppositeOrders)
         {
             if (incoming.Status == OrderStatus.Filled)
             {
@@ -95,20 +94,20 @@ internal sealed class OrderBook(Guid stockId)
         return trades;
     }
 
-    private Trade CreateTrade(OrderPlacedEvent buyOrder, OrderPlacedEvent sellOrder, int quantity)
+    private Trade CreateTrade(Order buyOrder, Order sellOrder, int quantity)
     {
         return new Trade(
             stockId: StockId,
             buyerId: buyOrder.UserId,
             sellerId: sellOrder.UserId,
-            buyOrderId: buyOrder.OrderId,
-            sellOrderId: sellOrder.OrderId,
+            buyOrderId: buyOrder.Id,
+            sellOrderId: sellOrder.Id,
             price: sellOrder.Price,
             quantity: quantity
         );
     }
 
-    private static int GetQuantityToFill(OrderPlacedEvent incoming, OrderPlacedEvent opposite)
+    private static int GetQuantityToFill(Order incoming, Order opposite)
     {
         return Math.Min(
             incoming.Quantity - incoming.FilledQuantity,
@@ -116,7 +115,7 @@ internal sealed class OrderBook(Guid stockId)
         );
     }
 
-    private static OrderStatus GetOrderStatus(OrderPlacedEvent order)
+    private static OrderStatus GetOrderStatus(Order order)
     {
         if (order.FilledQuantity == 0)
         {

@@ -1,6 +1,5 @@
 ﻿using Stockhub.Consumers.MatchingEngine.Domain.Entities;
 using Stockhub.Consumers.MatchingEngine.Domain.Enums;
-using Stockhub.Consumers.MatchingEngine.Domain.Events.OrderPlaced;
 using Stockhub.Consumers.MatchingEngine.Domain.ValueObjects;
 
 namespace Stockhub.Consumers.MatchingEngine.UnitTests;
@@ -9,7 +8,7 @@ public class OrderBookTests
 {
     private readonly Guid _stockId = Guid.CreateVersion7();
 
-    private OrderPlacedEvent CreateOrder(
+    private Order CreateOrder(
         OrderSide side,
         decimal price,
         int quantity,
@@ -17,9 +16,9 @@ public class OrderBookTests
         OrderStatus status = OrderStatus.Pending
         )
     {
-        return new OrderPlacedEvent
+        return new Order
         {
-            OrderId = Guid.CreateVersion7(),
+            Id = Guid.CreateVersion7(),
             UserId = Guid.CreateVersion7(),
             StockId = _stockId,
             Side = side,
@@ -37,7 +36,7 @@ public class OrderBookTests
     {
         // Arrange
         var book = new OrderBook(_stockId);
-        OrderPlacedEvent buy = CreateOrder(OrderSide.Buy, 100, 10);
+        Order buy = CreateOrder(OrderSide.Buy, 100, 10);
 
         // Act
         book.Add(buy);
@@ -52,8 +51,8 @@ public class OrderBookTests
     {
         // Arrange
         var book = new OrderBook(_stockId);
-        OrderPlacedEvent buy = CreateOrder(OrderSide.Buy, 100, 10);
-        OrderPlacedEvent sell = CreateOrder(OrderSide.Sell, 101, 5);
+        Order buy = CreateOrder(OrderSide.Buy, 100, 10);
+        Order sell = CreateOrder(OrderSide.Sell, 101, 5);
 
         // Act
         book.Add(buy);
@@ -69,7 +68,7 @@ public class OrderBookTests
     {
         // Arrange
         var book = new OrderBook(_stockId);
-        OrderPlacedEvent sell = CreateOrder(OrderSide.Sell, 100, 10);
+        Order sell = CreateOrder(OrderSide.Sell, 100, 10);
 
         // Act
         book.Add(sell);
@@ -96,8 +95,8 @@ public class OrderBookTests
     {
         // Arrange
         var book = new OrderBook(_stockId);
-        OrderPlacedEvent sell = CreateOrder(OrderSide.Sell, 95, 10);
-        OrderPlacedEvent buy = CreateOrder(OrderSide.Buy, 100, 10);
+        Order sell = CreateOrder(OrderSide.Sell, 95, 10);
+        Order buy = CreateOrder(OrderSide.Buy, 100, 10);
         book.Add(sell);
 
         // Act
@@ -113,10 +112,10 @@ public class OrderBookTests
     {
         // Arrange
         var book = new OrderBook(_stockId);
-        OrderPlacedEvent sell = CreateOrder(OrderSide.Sell, 100, 10);
+        Order sell = CreateOrder(OrderSide.Sell, 100, 10);
         book.Add(sell);
 
-        OrderPlacedEvent buy = CreateOrder(OrderSide.Buy, 105, 5);
+        Order buy = CreateOrder(OrderSide.Buy, 105, 5);
 
         // Act
         var trades = book.Match(buy).ToList();
@@ -133,7 +132,7 @@ public class OrderBookTests
     public void GetOrderStatus_Should_Return_Pending_When_No_Filled_Quantity()
     {
         // Arrange
-        OrderPlacedEvent order = CreateOrder(OrderSide.Buy, 100, 10, 0, OrderStatus.Pending);
+        Order order = CreateOrder(OrderSide.Buy, 100, 10, 0, OrderStatus.Pending);
 
         // Act & Assert
         var book = new OrderBook(_stockId);
@@ -157,9 +156,9 @@ public class OrderBookTests
     {
         // Arrange
         var book = new OrderBook(_stockId);
-        OrderPlacedEvent sell = CreateOrder(OrderSide.Sell, 100, 5);
+        Order sell = CreateOrder(OrderSide.Sell, 100, 5);
         book.Add(sell);
-        OrderPlacedEvent buy = CreateOrder(OrderSide.Buy, 100, 10);
+        Order buy = CreateOrder(OrderSide.Buy, 100, 10);
 
         // Act
         var trades = book.Match(buy).ToList();
@@ -174,8 +173,8 @@ public class OrderBookTests
         Assert.Equal(OrderStatus.Filled, sell.Status);
         Assert.Equal(buy.UserId, trade.BuyerId);
         Assert.Equal(sell.UserId, trade.SellerId);
-        Assert.Equal(buy.OrderId, trade.BuyOrderId);
-        Assert.Equal(sell.OrderId, trade.SellOrderId);
+        Assert.Equal(buy.Id, trade.BuyOrderId);
+        Assert.Equal(sell.Id, trade.SellOrderId);
         Assert.Equal(_stockId, trade.StockId);
     }
 
@@ -185,8 +184,8 @@ public class OrderBookTests
         // Arrange
         var book = new OrderBook(_stockId);
 
-        OrderPlacedEvent sell1 = CreateOrder(OrderSide.Sell, 100, 5);
-        OrderPlacedEvent sell2 = CreateOrder(OrderSide.Sell, 100, 5);
+        Order sell1 = CreateOrder(OrderSide.Sell, 100, 5);
+        Order sell2 = CreateOrder(OrderSide.Sell, 100, 5);
 
         sell1.CreatedAtUtc = DateTime.UtcNow;
         sell2.CreatedAtUtc = DateTime.UtcNow.AddMinutes(-1);
@@ -194,7 +193,7 @@ public class OrderBookTests
         book.Add(sell1);
         book.Add(sell2);
 
-        OrderPlacedEvent buy = CreateOrder(OrderSide.Buy, 105, 5);
+        Order buy = CreateOrder(OrderSide.Buy, 105, 5);
 
         // Act
         var trades = book.Match(buy).ToList();
@@ -203,7 +202,7 @@ public class OrderBookTests
         Assert.Single(trades);
         Trade trade = trades[0];
 
-        Assert.Equal(sell2.OrderId, trade.SellOrderId);
+        Assert.Equal(sell2.Id, trade.SellOrderId);
         Assert.Equal(5, trade.Quantity);
 
         Assert.Equal(5, buy.FilledQuantity);
@@ -217,8 +216,8 @@ public class OrderBookTests
 
         Assert.Equal(buy.UserId, trade.BuyerId);
         Assert.Equal(sell2.UserId, trade.SellerId);
-        Assert.Equal(buy.OrderId, trade.BuyOrderId);
-        Assert.Equal(sell2.OrderId, trade.SellOrderId);
+        Assert.Equal(buy.Id, trade.BuyOrderId);
+        Assert.Equal(sell2.Id, trade.SellOrderId);
     }
 
     [Fact]
@@ -226,11 +225,11 @@ public class OrderBookTests
     {
         // Arrange
         var book = new OrderBook(_stockId);
-        OrderPlacedEvent sell1 = CreateOrder(OrderSide.Sell, 100, 5);
-        OrderPlacedEvent sell2 = CreateOrder(OrderSide.Sell, 101, 5);
+        Order sell1 = CreateOrder(OrderSide.Sell, 100, 5);
+        Order sell2 = CreateOrder(OrderSide.Sell, 101, 5);
         book.Add(sell1);
         book.Add(sell2);
-        OrderPlacedEvent buy = CreateOrder(OrderSide.Buy, 105, 8);
+        Order buy = CreateOrder(OrderSide.Buy, 105, 8);
 
         // Act
         var trades = book.Match(buy).ToList();
@@ -256,11 +255,11 @@ public class OrderBookTests
     {
         // Arrange
         var book = new OrderBook(_stockId);
-        OrderPlacedEvent sell1 = CreateOrder(OrderSide.Sell, 98, 10);
-        OrderPlacedEvent sell2 = CreateOrder(OrderSide.Sell, 100, 10);
+        Order sell1 = CreateOrder(OrderSide.Sell, 98, 10);
+        Order sell2 = CreateOrder(OrderSide.Sell, 100, 10);
         book.Add(sell1);
         book.Add(sell2);
-        OrderPlacedEvent buy = CreateOrder(OrderSide.Buy, 100, 15);
+        Order buy = CreateOrder(OrderSide.Buy, 100, 15);
 
         // Act
         var trades = book.Match(buy).ToList();
@@ -286,15 +285,15 @@ public class OrderBookTests
     {
         // Arrange
         var book = new OrderBook(_stockId);
-        OrderPlacedEvent sell1 = CreateOrder(OrderSide.Sell, 95, 5);
-        OrderPlacedEvent sell2 = CreateOrder(OrderSide.Sell, 100, 5);
-        OrderPlacedEvent sell3 = CreateOrder(OrderSide.Sell, 105, 5);
+        Order sell1 = CreateOrder(OrderSide.Sell, 95, 5);
+        Order sell2 = CreateOrder(OrderSide.Sell, 100, 5);
+        Order sell3 = CreateOrder(OrderSide.Sell, 105, 5);
 
         book.Add(sell1);
         book.Add(sell2);
         book.Add(sell3);
 
-        OrderPlacedEvent buy = CreateOrder(OrderSide.Buy, 100, 10);
+        Order buy = CreateOrder(OrderSide.Buy, 100, 10);
 
         // Act
         var trades = book.Match(buy).ToList();
@@ -312,20 +311,20 @@ public class OrderBookTests
     {
         // Arrange
         var book = new OrderBook(_stockId);
-        OrderPlacedEvent filledSell = CreateOrder(OrderSide.Sell, 100, 10, 10, OrderStatus.Filled);
-        OrderPlacedEvent pendingSell = CreateOrder(OrderSide.Sell, 100, 10);
+        Order filledSell = CreateOrder(OrderSide.Sell, 100, 10, 10, OrderStatus.Filled);
+        Order pendingSell = CreateOrder(OrderSide.Sell, 100, 10);
 
         book.Add(filledSell);
         book.Add(pendingSell);
 
-        OrderPlacedEvent buy = CreateOrder(OrderSide.Buy, 105, 10);
+        Order buy = CreateOrder(OrderSide.Buy, 105, 10);
 
         // Act
         var trades = book.Match(buy).ToList();
 
         // Assert
         Assert.Single(trades);
-        Assert.Equal(pendingSell.OrderId, trades[0].SellOrderId);
+        Assert.Equal(pendingSell.Id, trades[0].SellOrderId);
         Assert.Equal(10, pendingSell.FilledQuantity);
         Assert.Equal(OrderStatus.Filled, pendingSell.Status);
         Assert.Equal(10, filledSell.FilledQuantity);
@@ -336,13 +335,13 @@ public class OrderBookTests
     {
         // Arrange
         var book = new OrderBook(_stockId);
-        OrderPlacedEvent sell1 = CreateOrder(OrderSide.Sell, 100, 5);
-        OrderPlacedEvent sell2 = CreateOrder(OrderSide.Sell, 100, 5);
+        Order sell1 = CreateOrder(OrderSide.Sell, 100, 5);
+        Order sell2 = CreateOrder(OrderSide.Sell, 100, 5);
 
         book.Add(sell1);
         book.Add(sell2);
 
-        OrderPlacedEvent buy = CreateOrder(OrderSide.Buy, 105, 5);
+        Order buy = CreateOrder(OrderSide.Buy, 105, 5);
 
         // Act
         var trades = book.Match(buy).ToList();
@@ -359,9 +358,9 @@ public class OrderBookTests
     {
         // Arrange
         var book = new OrderBook(_stockId);
-        OrderPlacedEvent sell = CreateOrder(OrderSide.Sell, 100, 10);
+        Order sell = CreateOrder(OrderSide.Sell, 100, 10);
         book.Add(sell);
-        OrderPlacedEvent buy = CreateOrder(OrderSide.Buy, 105, 10);
+        Order buy = CreateOrder(OrderSide.Buy, 105, 10);
 
         // Act
         var trades = book.Match(buy).ToList();
@@ -378,8 +377,8 @@ public class OrderBookTests
 
         Assert.Equal(buy.UserId, trade.BuyerId);
         Assert.Equal(sell.UserId, trade.SellerId);
-        Assert.Equal(buy.OrderId, trade.BuyOrderId);
-        Assert.Equal(sell.OrderId, trade.SellOrderId);
+        Assert.Equal(buy.Id, trade.BuyOrderId);
+        Assert.Equal(sell.Id, trade.SellOrderId);
         Assert.Equal(_stockId, trade.StockId);
     }
 
@@ -388,9 +387,9 @@ public class OrderBookTests
     {
         // Arrange
         var book = new OrderBook(_stockId);
-        OrderPlacedEvent sell = CreateOrder(OrderSide.Sell, 110, 10);
+        Order sell = CreateOrder(OrderSide.Sell, 110, 10);
         book.Add(sell);
-        OrderPlacedEvent buy = CreateOrder(OrderSide.Buy, 100, 10);
+        Order buy = CreateOrder(OrderSide.Buy, 100, 10);
 
         // Act
         var trades = book.Match(buy).ToList();
@@ -408,9 +407,9 @@ public class OrderBookTests
     {
         // Arrange
         var book = new OrderBook(_stockId);
-        OrderPlacedEvent buy = CreateOrder(OrderSide.Buy, 100, 5);
+        Order buy = CreateOrder(OrderSide.Buy, 100, 5);
         book.Add(buy);
-        OrderPlacedEvent sell = CreateOrder(OrderSide.Sell, 95, 10);
+        Order sell = CreateOrder(OrderSide.Sell, 95, 10);
 
         // Act
         var trades = book.Match(sell).ToList();
@@ -425,8 +424,8 @@ public class OrderBookTests
         Assert.Equal(OrderStatus.Filled, buy.Status);
         Assert.Equal(buy.UserId, trade.BuyerId);
         Assert.Equal(sell.UserId, trade.SellerId);
-        Assert.Equal(buy.OrderId, trade.BuyOrderId);
-        Assert.Equal(sell.OrderId, trade.SellOrderId);
+        Assert.Equal(buy.Id, trade.BuyOrderId);
+        Assert.Equal(sell.Id, trade.SellOrderId);
         Assert.Equal(_stockId, trade.StockId);
     }
 
@@ -435,11 +434,11 @@ public class OrderBookTests
     {
         // Arrange
         var book = new OrderBook(_stockId);
-        OrderPlacedEvent buy1 = CreateOrder(OrderSide.Buy, 105, 4);
-        OrderPlacedEvent buy2 = CreateOrder(OrderSide.Buy, 104, 6);
+        Order buy1 = CreateOrder(OrderSide.Buy, 105, 4);
+        Order buy2 = CreateOrder(OrderSide.Buy, 104, 6);
         book.Add(buy1);
         book.Add(buy2);
-        OrderPlacedEvent sell = CreateOrder(OrderSide.Sell, 100, 10);
+        Order sell = CreateOrder(OrderSide.Sell, 100, 10);
 
         // Act
         var trades = book.Match(sell).ToList();
@@ -465,15 +464,15 @@ public class OrderBookTests
     {
         // Arrange
         var book = new OrderBook(_stockId);
-        OrderPlacedEvent buy1 = CreateOrder(OrderSide.Buy, 105, 5);
-        OrderPlacedEvent buy2 = CreateOrder(OrderSide.Buy, 100, 5);
-        OrderPlacedEvent buy3 = CreateOrder(OrderSide.Buy, 95, 5);
+        Order buy1 = CreateOrder(OrderSide.Buy, 105, 5);
+        Order buy2 = CreateOrder(OrderSide.Buy, 100, 5);
+        Order buy3 = CreateOrder(OrderSide.Buy, 95, 5);
 
         book.Add(buy1);
         book.Add(buy2);
         book.Add(buy3);
 
-        OrderPlacedEvent sell = CreateOrder(OrderSide.Sell, 100, 10);
+        Order sell = CreateOrder(OrderSide.Sell, 100, 10);
 
         // Act
         var trades = book.Match(sell).ToList();
@@ -491,20 +490,20 @@ public class OrderBookTests
     {
         // Arrange
         var book = new OrderBook(_stockId);
-        OrderPlacedEvent filledBuy = CreateOrder(OrderSide.Buy, 100, 10, 10, OrderStatus.Filled);
-        OrderPlacedEvent pendingBuy = CreateOrder(OrderSide.Buy, 100, 10);
+        Order filledBuy = CreateOrder(OrderSide.Buy, 100, 10, 10, OrderStatus.Filled);
+        Order pendingBuy = CreateOrder(OrderSide.Buy, 100, 10);
 
         book.Add(filledBuy);
         book.Add(pendingBuy);
 
-        OrderPlacedEvent sell = CreateOrder(OrderSide.Sell, 95, 10);
+        Order sell = CreateOrder(OrderSide.Sell, 95, 10);
 
         // Act
         var trades = book.Match(sell).ToList();
 
         // Assert
         Assert.Single(trades);
-        Assert.Equal(pendingBuy.OrderId, trades[0].BuyOrderId);
+        Assert.Equal(pendingBuy.Id, trades[0].BuyOrderId);
         Assert.Equal(10, pendingBuy.FilledQuantity);
         Assert.Equal(OrderStatus.Filled, pendingBuy.Status);
         Assert.Equal(10, filledBuy.FilledQuantity);
@@ -515,13 +514,13 @@ public class OrderBookTests
     {
         // Arrange
         var book = new OrderBook(_stockId);
-        OrderPlacedEvent buy1 = CreateOrder(OrderSide.Buy, 100, 5);
-        OrderPlacedEvent buy2 = CreateOrder(OrderSide.Buy, 100, 5);
+        Order buy1 = CreateOrder(OrderSide.Buy, 100, 5);
+        Order buy2 = CreateOrder(OrderSide.Buy, 100, 5);
 
         book.Add(buy1);
         book.Add(buy2);
 
-        OrderPlacedEvent sell = CreateOrder(OrderSide.Sell, 95, 5);
+        Order sell = CreateOrder(OrderSide.Sell, 95, 5);
 
         // Act
         var trades = book.Match(sell).ToList();
@@ -538,9 +537,9 @@ public class OrderBookTests
     {
         // Arrange
         var book = new OrderBook(_stockId);
-        OrderPlacedEvent buy = CreateOrder(OrderSide.Buy, 90, 10);
+        Order buy = CreateOrder(OrderSide.Buy, 90, 10);
         book.Add(buy);
-        OrderPlacedEvent sell = CreateOrder(OrderSide.Sell, 100, 10);
+        Order sell = CreateOrder(OrderSide.Sell, 100, 10);
 
         // Act
         var trades = book.Match(sell).ToList();
@@ -558,9 +557,9 @@ public class OrderBookTests
     {
         // Arrange
         var book = new OrderBook(_stockId);
-        OrderPlacedEvent buy = CreateOrder(OrderSide.Buy, 100, 10);
+        Order buy = CreateOrder(OrderSide.Buy, 100, 10);
         book.Add(buy);
-        OrderPlacedEvent sell = CreateOrder(OrderSide.Sell, 95, 10);
+        Order sell = CreateOrder(OrderSide.Sell, 95, 10);
 
         // Act
         var trades = book.Match(sell).ToList();
@@ -576,8 +575,8 @@ public class OrderBookTests
         Assert.Equal(OrderStatus.Filled, buy.Status);
         Assert.Equal(buy.UserId, trade.BuyerId);
         Assert.Equal(sell.UserId, trade.SellerId);
-        Assert.Equal(buy.OrderId, trade.BuyOrderId);
-        Assert.Equal(sell.OrderId, trade.SellOrderId);
+        Assert.Equal(buy.Id, trade.BuyOrderId);
+        Assert.Equal(sell.Id, trade.SellOrderId);
         Assert.Equal(_stockId, trade.StockId);
     }
 
@@ -586,8 +585,8 @@ public class OrderBookTests
     {
         // Arrange
         var book = new OrderBook(_stockId);
-        OrderPlacedEvent sell = CreateOrder(OrderSide.Sell, 100, 1);
-        OrderPlacedEvent buy = CreateOrder(OrderSide.Buy, 100, 1);
+        Order sell = CreateOrder(OrderSide.Sell, 100, 1);
+        Order buy = CreateOrder(OrderSide.Buy, 100, 1);
         book.Add(sell);
 
         // Act
@@ -599,8 +598,8 @@ public class OrderBookTests
         Assert.Equal(1, trade.Quantity);
         Assert.Equal(buy.UserId, trade.BuyerId);
         Assert.Equal(sell.UserId, trade.SellerId);
-        Assert.Equal(buy.OrderId, trade.BuyOrderId);
-        Assert.Equal(sell.OrderId, trade.SellOrderId);
+        Assert.Equal(buy.Id, trade.BuyOrderId);
+        Assert.Equal(sell.Id, trade.SellOrderId);
     }
 
     [Fact]
@@ -608,9 +607,9 @@ public class OrderBookTests
     {
         // Arrange
         var book = new OrderBook(_stockId);
-        OrderPlacedEvent buy = CreateOrder(OrderSide.Buy, 90, 5);
+        Order buy = CreateOrder(OrderSide.Buy, 90, 5);
         book.Add(buy);
-        OrderPlacedEvent sell = CreateOrder(OrderSide.Sell, 100, 5);
+        Order sell = CreateOrder(OrderSide.Sell, 100, 5);
 
         // Act
         var trades = book.Match(sell).ToList();
@@ -629,13 +628,13 @@ public class OrderBookTests
         // Arrange
         var book = new OrderBook(_stockId);
 
-        OrderPlacedEvent filledBuy = CreateOrder(OrderSide.Buy, 100, 10, 10, OrderStatus.Filled);
-        OrderPlacedEvent partialBuy = CreateOrder(OrderSide.Buy, 100, 10, 5, OrderStatus.PartiallyFilled);
-        OrderPlacedEvent pendingBuy = CreateOrder(OrderSide.Buy, 100, 10, 0, OrderStatus.Pending);
+        Order filledBuy = CreateOrder(OrderSide.Buy, 100, 10, 10, OrderStatus.Filled);
+        Order partialBuy = CreateOrder(OrderSide.Buy, 100, 10, 5, OrderStatus.PartiallyFilled);
+        Order pendingBuy = CreateOrder(OrderSide.Buy, 100, 10, 0, OrderStatus.Pending);
 
-        OrderPlacedEvent filledSell = CreateOrder(OrderSide.Sell, 100, 10, 10, OrderStatus.Filled);
-        OrderPlacedEvent partialSell = CreateOrder(OrderSide.Sell, 100, 10, 5, OrderStatus.PartiallyFilled);
-        OrderPlacedEvent pendingSell = CreateOrder(OrderSide.Sell, 100, 10, 0, OrderStatus.Pending);
+        Order filledSell = CreateOrder(OrderSide.Sell, 100, 10, 10, OrderStatus.Filled);
+        Order partialSell = CreateOrder(OrderSide.Sell, 100, 10, 5, OrderStatus.PartiallyFilled);
+        Order pendingSell = CreateOrder(OrderSide.Sell, 100, 10, 0, OrderStatus.Pending);
 
         book.Add(filledBuy);
         book.Add(partialBuy);
@@ -645,7 +644,7 @@ public class OrderBookTests
         book.Add(pendingSell);
 
         // Act
-        OrderPlacedEvent incoming = CreateOrder(OrderSide.Buy, 90, 1);
+        Order incoming = CreateOrder(OrderSide.Buy, 90, 1);
         book.Match(incoming);
 
         // Assert

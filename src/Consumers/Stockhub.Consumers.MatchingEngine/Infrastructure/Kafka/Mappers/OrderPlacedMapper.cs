@@ -1,14 +1,14 @@
 ﻿using System.Numerics;
 using Stockhub.Common.Messaging.Consumers.Debezium;
+using Stockhub.Consumers.MatchingEngine.Domain.Entities;
 using Stockhub.Consumers.MatchingEngine.Domain.Enums;
 using Stockhub.Consumers.MatchingEngine.Domain.Events;
-using Stockhub.Consumers.MatchingEngine.Domain.Events.OrderPlaced;
 
 namespace Stockhub.Consumers.MatchingEngine.Infrastructure.Kafka.Mappers;
 
 internal sealed class OrderPlacedMapper
 {
-    public OrderPlacedEvent Map(DebeziumPayload<OrderEventPayload> payload)
+    public Order Map(DebeziumPayload<OrderEventPayload> payload)
     {
         OrderEventPayload after = payload.After!;
 
@@ -16,9 +16,9 @@ internal sealed class OrderPlacedMapper
         BigInteger unscaledPrice = new(priceBytes.Reverse().ToArray());
         decimal price = (decimal)unscaledPrice / 100m;
 
-        return new OrderPlacedEvent
+        return new Order
         {
-            OrderId = after.Id,
+            Id = after.Id,
             UserId = after.User_Id,
             StockId = after.Stock_Id,
             Side = (OrderSide)after.Side,

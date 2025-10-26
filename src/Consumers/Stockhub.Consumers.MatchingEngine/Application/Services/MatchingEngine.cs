@@ -2,7 +2,6 @@
 using Microsoft.Extensions.Logging;
 using Stockhub.Consumers.MatchingEngine.Domain.Entities;
 using Stockhub.Consumers.MatchingEngine.Domain.Enums;
-using Stockhub.Consumers.MatchingEngine.Domain.Events.OrderPlaced;
 using Stockhub.Consumers.MatchingEngine.Domain.ValueObjects;
 using Stockhub.Consumers.MatchingEngine.Infrastructure.Database;
 
@@ -23,7 +22,7 @@ internal sealed class MatchingEngine(
         logger.LogInformation("Matching Engine started with {Count} existing orders", totalOrders);
     }
 
-    public async Task ProcessAsync(OrderPlacedEvent order, CancellationToken cancellationToken)
+    public async Task ProcessAsync(Order order, CancellationToken cancellationToken)
     {
         OrderBook orderBook = GetOrCreateOrderBook(order.StockId);
         orderBook.Add(order);
@@ -93,9 +92,9 @@ internal sealed class MatchingEngine(
         {
             OrderBook orderBook = GetOrCreateOrderBook(order.StockId);
 
-            orderBook.Add(new OrderPlacedEvent
+            orderBook.Add(new Order
             {
-                OrderId = order.Id,
+                Id = order.Id,
                 UserId = order.UserId,
                 StockId = order.StockId,
                 Side = order.Side,

@@ -5,8 +5,8 @@ using Stockhub.Common.Messaging.Consumers.Configuration;
 using Stockhub.Common.Messaging.Consumers.Debezium;
 using Stockhub.Common.Messaging.Consumers.Kafka;
 using Stockhub.Consumers.MatchingEngine.Application.Services;
+using Stockhub.Consumers.MatchingEngine.Domain.Entities;
 using Stockhub.Consumers.MatchingEngine.Domain.Events;
-using Stockhub.Consumers.MatchingEngine.Domain.Events.OrderPlaced;
 using Stockhub.Consumers.MatchingEngine.Infrastructure.Kafka.Mappers;
 
 namespace Stockhub.Consumers.MatchingEngine.Infrastructure.Kafka;
@@ -40,7 +40,7 @@ internal sealed class OrderCdcConsumer(
                 OrderPlacedMapper mapper = scope.GetRequiredService<OrderPlacedMapper>();
                 IMatchingEngine matchingEngine = scope.GetRequiredService<IMatchingEngine>();
 
-                OrderPlacedEvent? placedEvent = mapper.Map(payload);
+                Order? placedEvent = mapper.Map(payload);
                 if (placedEvent is not null)
                 {
                     await matchingEngine.ProcessAsync(placedEvent, cancellationToken);

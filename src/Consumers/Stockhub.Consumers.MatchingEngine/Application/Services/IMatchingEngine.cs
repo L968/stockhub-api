@@ -1,9 +1,9 @@
-﻿using Stockhub.Consumers.MatchingEngine.Domain.Events.OrderPlaced;
+﻿using Stockhub.Consumers.MatchingEngine.Domain.Entities;
 
 namespace Stockhub.Consumers.MatchingEngine.Application.Services;
 
 internal interface IMatchingEngine
 {
     Task StartAsync(CancellationToken cancellationToken);
-    Task ProcessAsync(OrderPlacedEvent order, CancellationToken cancellationToken);
+    Task ProcessAsync(Order order, CancellationToken cancellationToken);
 }
