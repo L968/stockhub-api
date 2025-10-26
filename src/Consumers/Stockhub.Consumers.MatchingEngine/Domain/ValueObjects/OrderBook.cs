@@ -24,28 +24,56 @@ internal sealed class OrderBook(Guid stockId)
         }
     }
 
-    public IEnumerable<Trade> Match(Order incomingOrder)
+    public void Remove(Guid orderId)
     {
-        List<Trade> trades = incomingOrder.Side == OrderSide.Buy
-            ? MatchIncomingBuyOrder(incomingOrder)
-            : MatchIncomingSellOrder(incomingOrder);
+        _buyOrders.RemoveAll(o => o.Id == orderId);
+        _sellOrders.RemoveAll(o => o.Id == orderId);
+    }
+
+    public List<TradeProposal> ProposeTrades(Order incomingOrder)
+    {
+        List<Order> orderMatches = incomingOrder.Side == OrderSide.Buy
+            ? FindMatchingSellOrders(incomingOrder)
+            : FindMatchingBuyOrders(incomingOrder);
+
+        var proposals = new List<TradeProposal>();
+        int remainingQuantity = incomingOrder.Quantity - incomingOrder.FilledQuantity;
+
+        foreach (Order oppositeOrder in orderMatches)
+        {
+            if (remainingQuantity <= 0)
+            {
+                break;
+            }
+
+            int fillQuantity = CalculateFillQuantity(oppositeOrder, remainingQuantity);
+
+            var proposal = new TradeProposal(
+                StockId: StockId,
+                BuyOrderId: incomingOrder.Side == OrderSide.Buy ? incomingOrder.Id : oppositeOrder.Id,
+                SellOrderId: incomingOrder.Side == OrderSide.Sell ? incomingOrder.Id : oppositeOrder.Id,
+                Price: incomingOrder.Side == OrderSide.Buy ? oppositeOrder.Price : incomingOrder.Price,
+                Quantity: fillQuantity
+            );
+
+            proposals.Add(proposal);
+            remainingQuantity -= fillQuantity;
+        }
+
+        return proposals;
+    }
+
+    public void CommitTrade(Trade trade)
+    {
+        Order? buyOrder = _buyOrders.FirstOrDefault(o => o.Id == trade.BuyOrderId);
+        Order? sellOrder = _sellOrders.FirstOrDefault(o => o.Id == trade.SellOrderId);
+
+        buyOrder?.Fill(trade.Quantity);
+        sellOrder?.Fill(trade.Quantity);
 
         RemoveFilledOrders();
-
-        return trades;
     }
 
-    private List<Trade> MatchIncomingBuyOrder(Order incomingOrder)
-    {
-        List<Order> matches = FindMatchingSellOrders(incomingOrder);
-        return ExecuteMatches(incomingOrder, matches);
-    }
-
-    private List<Trade> MatchIncomingSellOrder(Order incoming)
-    {
-        List<Order> matches = FindMatchingBuyOrders(incoming);
-        return ExecuteMatches(incoming, matches);
-    }
 
     private List<Order> FindMatchingBuyOrders(Order sellOrder)
     {
@@ -65,51 +93,9 @@ internal sealed class OrderBook(Guid stockId)
             .ToList();
     }
 
-    private List<Trade> ExecuteMatches(Order incomingOrder, List<Order> oppositeOrders)
+    private static int CalculateFillQuantity(Order oppositeOrder, int remainingQuantity)
     {
-        var trades = new List<Trade>();
-
-        foreach (Order oppositeOrder in oppositeOrders)
-        {
-            if (incomingOrder.Status == OrderStatus.Filled)
-            {
-                break;
-            }
-
-            int quantityToFill = GetQuantityToFill(incomingOrder, oppositeOrder);
-
-            Trade trade = incomingOrder.Side == OrderSide.Buy
-                ? CreateTrade(incomingOrder, oppositeOrder, quantityToFill)
-                : CreateTrade(oppositeOrder, incomingOrder, quantityToFill);
-
-            trades.Add(trade);
-
-            incomingOrder.Fill(quantityToFill);
-            oppositeOrder.Fill(quantityToFill);
-        }
-
-        return trades;
-    }
-
-    private Trade CreateTrade(Order buyOrder, Order sellOrder, int quantity)
-    {
-        return new Trade(
-            stockId: StockId,
-            buyerId: buyOrder.UserId,
-            sellerId: sellOrder.UserId,
-            buyOrderId: buyOrder.Id,
-            sellOrderId: sellOrder.Id,
-            price: sellOrder.Price,
-            quantity: quantity
-        );
-    }
-
-    private static int GetQuantityToFill(Order incomingOrder, Order oppositeOrder)
-    {
-        return Math.Min(
-            incomingOrder.Quantity - incomingOrder.FilledQuantity,
-            oppositeOrder.Quantity - oppositeOrder.FilledQuantity
-        );
+        return Math.Min(remainingQuantity, oppositeOrder.Quantity - oppositeOrder.FilledQuantity);
     }
 
     private void RemoveFilledOrders()

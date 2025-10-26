@@ -27,20 +27,23 @@ internal sealed class MatchingEngine(
         OrderBook orderBook = GetOrCreateOrderBook(incomingOrder.StockId);
         orderBook.Add(incomingOrder);
 
-        IEnumerable<Trade> trades = orderBook.Match(incomingOrder);
-
-        foreach (Trade trade in trades)
+        bool continueProcessing = true;
+        while (continueProcessing)
         {
-            await ApplyTradeEffectsAsync(trade, cancellationToken);
+            List<TradeProposal> proposals = orderBook.ProposeTrades(incomingOrder);
+            continueProcessing = false;
 
-            logger.LogInformation(
-                "Trade executed: {StockId} | Buy {BuyOrderId} ↔ Sell {SellOrderId} @ {Price} x {Quantity}",
-                trade.StockId, trade.BuyOrderId, trade.SellOrderId, trade.Price, trade.Quantity
-            );
+            foreach (TradeProposal proposal in proposals)
+            {
+                bool tradeExecuted = await ProcessTradeProposalAsync(proposal, orderBook, cancellationToken);
+
+                if (!tradeExecuted)
+                {
+                    continueProcessing = true;
+                    break;
+                }
+            }
         }
-
-        await ordersDbContext.SaveChangesAsync(cancellationToken);
-        await usersDbContext.SaveChangesAsync(cancellationToken);
 
         if (orderBook.IsEmpty)
         {
@@ -48,30 +51,45 @@ internal sealed class MatchingEngine(
         }
     }
 
-
-    private async Task ApplyTradeEffectsAsync(Trade trade, CancellationToken cancellationToken)
+    private async Task<bool> ProcessTradeProposalAsync(TradeProposal proposal, OrderBook orderBook, CancellationToken cancellationToken)
     {
-        ordersDbContext.Trades.Add(trade);
+        (Order buyOrder, Order sellOrder, User buyer, User seller) = await LoadOrdersAndUsersAsync(proposal, cancellationToken);
 
-        Order buyOrder = await ordersDbContext.Orders.FirstAsync(o => o.Id == trade.BuyOrderId, cancellationToken);
-        Order sellOrder = await ordersDbContext.Orders.FirstAsync(o => o.Id == trade.SellOrderId, cancellationToken);
+        decimal totalValue = proposal.Price * proposal.Quantity;
+        if (buyer.CurrentBalance < totalValue)
+        {
+            logger.LogWarning("Insufficient balance for buyer {BuyerId}, cancelling order {OrderId}", buyer.Id, buyOrder.Id);
 
+            buyOrder.Cancel();
+            await ordersDbContext.SaveChangesAsync(cancellationToken);
+
+            orderBook.Remove(buyOrder.Id);
+
+            return false;
+        }
+
+        Trade trade = CreateTrade(proposal, buyer, seller);
+
+        await ApplyTradeToDatabaseAsync(trade, buyOrder, sellOrder, buyer, seller, cancellationToken);
+
+        orderBook.CommitTrade(trade);
+
+        logger.LogInformation(
+            "Trade executed: {StockId} | Buy {BuyOrderId} ↔ Sell {SellOrderId} @ {Price} x {Quantity}",
+            trade.StockId, trade.BuyOrderId, trade.SellOrderId, trade.Price, trade.Quantity
+        );
+
+        return true;
+    }
+
+    private async Task<(Order buyOrder, Order sellOrder, User buyer, User seller)> LoadOrdersAndUsersAsync(TradeProposal proposal, CancellationToken cancellationToken)
+    {
+        Order buyOrder = await ordersDbContext.Orders.FirstAsync(o => o.Id == proposal.BuyOrderId, cancellationToken);
+        Order sellOrder = await ordersDbContext.Orders.FirstAsync(o => o.Id == proposal.SellOrderId, cancellationToken);
         User buyer = await usersDbContext.Users.FirstAsync(u => u.Id == buyOrder.UserId, cancellationToken);
         User seller = await usersDbContext.Users.FirstAsync(u => u.Id == sellOrder.UserId, cancellationToken);
 
-        decimal totalValue = trade.Price * trade.Quantity;
-
-        if (buyer.CurrentBalance < totalValue)
-        {
-            logger.LogWarning("Insufficient balance for buyer {BuyerId}, trade {TradeId} skipped", buyer.Id, trade.Id);
-            return;
-        }
-
-        buyOrder.Fill(trade.Quantity);
-        sellOrder.Fill(trade.Quantity);
-
-        buyer.CurrentBalance -= totalValue;
-        seller.CurrentBalance += totalValue;
+        return (buyOrder, sellOrder, buyer, seller);
     }
 
     private async Task BuildAsync(CancellationToken cancellationToken)
@@ -112,5 +130,36 @@ internal sealed class MatchingEngine(
         }
 
         return orderBook;
+    }
+
+    private static Trade CreateTrade(TradeProposal proposal, User buyer, User seller)
+        => new(
+            stockId: proposal.StockId,
+            buyerId: buyer.Id,
+            sellerId: seller.Id,
+            buyOrderId: proposal.BuyOrderId,
+            sellOrderId: proposal.SellOrderId,
+            price: proposal.Price,
+            quantity: proposal.Quantity
+        );
+
+    private async Task ApplyTradeToDatabaseAsync(
+        Trade trade,
+        Order buyOrder,
+        Order sellOrder,
+        User buyer,
+        User seller,
+        CancellationToken cancellationToken)
+    {
+        buyOrder.Fill(trade.Quantity);
+        sellOrder.Fill(trade.Quantity);
+
+        buyer.CurrentBalance -= trade.Price * trade.Quantity;
+        seller.CurrentBalance += trade.Price * trade.Quantity;
+
+        ordersDbContext.Trades.Add(trade);
+
+        await ordersDbContext.SaveChangesAsync(cancellationToken);
+        await usersDbContext.SaveChangesAsync(cancellationToken);
     }
 }
