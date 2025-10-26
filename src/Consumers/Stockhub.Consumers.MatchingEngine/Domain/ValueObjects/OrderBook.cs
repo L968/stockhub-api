@@ -28,68 +28,67 @@ internal sealed class OrderBook(Guid stockId)
     public IEnumerable<Trade> Match(OrderPlacedEvent incoming)
     {
         List<Trade> trades = incoming.Side == OrderSide.Buy
-            ? MatchBuyOrder(incoming)
-            : MatchSellOrder(incoming);
+            ? MatchIncomingBuyOrder(incoming)
+            : MatchIncomingSellOrder(incoming);
 
         RemoveFilledOrders();
 
         return trades;
     }
 
-    private List<Trade> MatchBuyOrder(OrderPlacedEvent incoming)
+    private List<Trade> MatchIncomingBuyOrder(OrderPlacedEvent incoming)
     {
-        var trades = new List<Trade>();
-        var matches = _sellOrders
-            .Where(s => s.Price <= incoming.Price && s.FilledQuantity < s.Quantity)
+        List<OrderPlacedEvent> matches = FindMatchingSellOrders(incoming);
+        return ExecuteMatches(incoming, matches);
+    }
+
+    private List<Trade> MatchIncomingSellOrder(OrderPlacedEvent incoming)
+    {
+        List<OrderPlacedEvent> matches = FindMatchingBuyOrders(incoming);
+        return ExecuteMatches(incoming, matches);
+    }
+
+    private List<OrderPlacedEvent> FindMatchingBuyOrders(OrderPlacedEvent sellOrder)
+    {
+        return _buyOrders
+            .Where(b => b.Price >= sellOrder.Price && b.FilledQuantity < b.Quantity)
+            .OrderByDescending(b => b.Price)
+            .ThenBy(b => b.CreatedAtUtc)
+            .ToList();
+    }
+
+    private List<OrderPlacedEvent> FindMatchingSellOrders(OrderPlacedEvent buyOrder)
+    {
+        return _sellOrders
+            .Where(s => s.Price <= buyOrder.Price && s.FilledQuantity < s.Quantity)
             .OrderBy(s => s.Price)
             .ThenBy(s => s.CreatedAtUtc)
             .ToList();
-
-        foreach (OrderPlacedEvent? sellOrder in matches)
-        {
-            if (incoming.Status == OrderStatus.Filled)
-            {
-                break;
-            }
-
-            int quantityToFill = GetQuantityToFill(incoming, sellOrder);
-
-            trades.Add(CreateTrade(incoming, sellOrder, quantityToFill));
-
-            incoming.FilledQuantity += quantityToFill;
-            sellOrder.FilledQuantity += quantityToFill;
-
-            sellOrder.Status = GetOrderStatus(sellOrder);
-            incoming.Status = GetOrderStatus(incoming);
-        }
-
-        return trades;
     }
 
-    private List<Trade> MatchSellOrder(OrderPlacedEvent incoming)
+    private List<Trade> ExecuteMatches(OrderPlacedEvent incoming, List<OrderPlacedEvent> oppositeOrders)
     {
         var trades = new List<Trade>();
-        var matches = _buyOrders
-            .Where(b => b.Price >= incoming.Price && b.FilledQuantity < b.Quantity)
-            .OrderByDescending(b => b.Price)
-            .ThenBy(s => s.CreatedAtUtc)
-            .ToList();
 
-        foreach (OrderPlacedEvent? buyOrder in matches)
+        foreach (OrderPlacedEvent oppositeOrder in oppositeOrders)
         {
             if (incoming.Status == OrderStatus.Filled)
             {
                 break;
             }
 
-            int quantityToFill = GetQuantityToFill(incoming, buyOrder);
+            int quantityToFill = GetQuantityToFill(incoming, oppositeOrder);
 
-            trades.Add(CreateTrade(buyOrder, incoming, quantityToFill));
+            Trade trade = incoming.Side == OrderSide.Buy
+                ? CreateTrade(incoming, oppositeOrder, quantityToFill)
+                : CreateTrade(oppositeOrder, incoming, quantityToFill);
+
+            trades.Add(trade);
 
             incoming.FilledQuantity += quantityToFill;
-            buyOrder.FilledQuantity += quantityToFill;
+            oppositeOrder.FilledQuantity += quantityToFill;
 
-            buyOrder.Status = GetOrderStatus(buyOrder);
+            oppositeOrder.Status = GetOrderStatus(oppositeOrder);
             incoming.Status = GetOrderStatus(incoming);
         }
 

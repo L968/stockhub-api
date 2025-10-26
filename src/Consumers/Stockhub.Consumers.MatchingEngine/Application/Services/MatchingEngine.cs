@@ -41,6 +41,7 @@ internal sealed class MatchingEngine(
         }
 
         await ordersDbContext.SaveChangesAsync(cancellationToken);
+        await usersDbContext.SaveChangesAsync(cancellationToken);
 
         if (orderBook.IsEmpty)
         {
@@ -48,10 +49,44 @@ internal sealed class MatchingEngine(
         }
     }
 
+    public async Task ApplyTradeEffectsAsync(Trade trade, CancellationToken cancellationToken)
+    {
+        ordersDbContext.Trades.Add(trade);
+
+        Order buyOrder = await ordersDbContext.Orders.FirstAsync(o => o.Id == trade.BuyOrderId, cancellationToken);
+        Order sellOrder = await ordersDbContext.Orders.FirstAsync(o => o.Id == trade.SellOrderId, cancellationToken);
+
+        User buyer = await usersDbContext.Users.FirstAsync(u => u.Id == buyOrder.UserId, cancellationToken);
+        User seller = await usersDbContext.Users.FirstAsync(u => u.Id == sellOrder.UserId, cancellationToken);
+
+        decimal totalValue = trade.Price * trade.Quantity;
+
+        if (buyer.CurrentBalance < totalValue)
+        {
+            logger.LogWarning("Insufficient balance for buyer {BuyerId}, trade {TradeId} skipped", buyer.Id, trade.Id);
+            return;
+        }
+
+        buyOrder.FilledQuantity += trade.Quantity;
+        sellOrder.FilledQuantity += trade.Quantity;
+
+        buyOrder.Status = buyOrder.FilledQuantity >= buyOrder.Quantity
+            ? OrderStatus.Filled
+            : OrderStatus.PartiallyFilled;
+
+        sellOrder.Status = sellOrder.FilledQuantity >= sellOrder.Quantity
+            ? OrderStatus.Filled
+            : OrderStatus.PartiallyFilled;
+
+        buyer.CurrentBalance -= totalValue;
+        seller.CurrentBalance += totalValue;
+    }
+
     private async Task BuildAsync(CancellationToken cancellationToken)
     {
         List<Order> openOrders = await ordersDbContext.Orders
-            .Where(o => o.Status == OrderStatus.Pending)
+            .Where(o => o.Status == OrderStatus.Pending || o.Status == OrderStatus.PartiallyFilled)
+            .AsNoTracking()
             .ToListAsync(cancellationToken);
 
         foreach (Order order in openOrders)
@@ -85,32 +120,5 @@ internal sealed class MatchingEngine(
         }
 
         return orderBook;
-    }
-
-    private async Task ApplyTradeEffectsAsync(Trade trade, CancellationToken cancellationToken)
-    {
-        ordersDbContext.Trades.Add(trade);
-
-        Order buyOrder = await ordersDbContext.Orders.FirstAsync(o => o.Id == trade.BuyOrderId, cancellationToken);
-        Order sellOrder = await ordersDbContext.Orders.FirstAsync(o => o.Id == trade.SellOrderId, cancellationToken);
-
-        buyOrder.FilledQuantity += trade.Quantity;
-        sellOrder.FilledQuantity += trade.Quantity;
-
-        buyOrder.Status = buyOrder.FilledQuantity >= buyOrder.Quantity
-            ? OrderStatus.Filled
-            : OrderStatus.PartiallyFilled;
-
-        sellOrder.Status = sellOrder.FilledQuantity >= sellOrder.Quantity
-            ? OrderStatus.Filled
-            : OrderStatus.PartiallyFilled;
-
-        User buyer = await usersDbContext.Users.FirstAsync(u => u.Id == buyOrder.UserId, cancellationToken);
-        User seller = await usersDbContext.Users.FirstAsync(u => u.Id == sellOrder.UserId, cancellationToken);
-
-        decimal totalValue = trade.Price * trade.Quantity;
-
-        buyer.CurrentBalance -= totalValue;
-        seller.CurrentBalance += totalValue;
     }
 }
