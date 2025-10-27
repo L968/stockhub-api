@@ -54,7 +54,7 @@ public class MatchingEngineServiceTests
     {
         // Arrange
         var stockId = Guid.NewGuid();
-        Order order = CreateOrder(stockId: stockId);
+        Order order = CreateOrder(stockId: stockId, side: OrderSide.Sell);
         _ordersDbContextMock.Setup(x => x.Orders).ReturnsDbSet([]);
 
         // Act
@@ -122,6 +122,47 @@ public class MatchingEngineServiceTests
             }
         );
     }
+
+    [Fact]
+    public async Task ProcessAsync_Should_Cancel_BuyOrder_If_Buyer_Has_Insufficient_Balance_And_Not_Execute_Any_Trade()
+    {
+        // Arrange
+        var stockId = Guid.NewGuid();
+
+        Order buyIncoming = CreateOrder(Guid.NewGuid(), stockId, OrderSide.Buy, price: 100, quantity: 10);
+
+        Order sell1 = CreateOrder(Guid.NewGuid(), stockId, OrderSide.Sell, price: 100, quantity: 3);
+        Order sell2 = CreateOrder(Guid.NewGuid(), stockId, OrderSide.Sell, price: 100, quantity: 4);
+        Order sell3 = CreateOrder(Guid.NewGuid(), stockId, OrderSide.Sell, price: 100, quantity: 5);
+
+        var buyer = new User { Id = buyIncoming.UserId, CurrentBalance = 500 };
+        var seller1 = new User { Id = sell1.UserId, CurrentBalance = 0 };
+        var seller2 = new User { Id = sell2.UserId, CurrentBalance = 0 };
+        var seller3 = new User { Id = sell3.UserId, CurrentBalance = 0 };
+
+        _ordersDbContextMock.Setup(x => x.Orders).ReturnsDbSet([buyIncoming, sell1, sell2, sell3]);
+        _ordersDbContextMock.Setup(x => x.Trades).ReturnsDbSet([]);
+        _ordersDbContextMock.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+        _usersDbContextMock.Setup(x => x.Users).ReturnsDbSet([buyer, seller1, seller2, seller3]);
+
+        await _service.StartAsync(CancellationToken.None);
+
+        // Act
+        List<Trade> executedTrades = await _service.ProcessAsync(buyIncoming, CancellationToken.None);
+
+        // Assert
+        Assert.True(buyIncoming.IsCancelled);
+        Assert.Empty(executedTrades);
+
+        Assert.Equal(500, buyer.CurrentBalance);
+        Assert.Equal(0, buyIncoming.FilledQuantity);
+        Assert.Equal(0, sell1.FilledQuantity);
+        Assert.Equal(0, sell2.FilledQuantity);
+        Assert.Equal(0, sell3.FilledQuantity);
+
+        _loggerMock.VerifyLog(LogLevel.Warning, "Insufficient balance", Times.AtLeast(1));
+    }
+
 
     [Fact]
     public async Task ProcessAsync_Should_Cancel_BuyOrder_When_Buyer_Has_Insufficient_Balance_And_Incoming_Is_Sell()
@@ -244,7 +285,7 @@ public class MatchingEngineServiceTests
     {
         // Arrange
         var stockId = Guid.NewGuid();
-        Order cancelledOrder = CreateOrder(stockId: stockId, side: OrderSide.Buy, price: 100, quantity: 10, isCancelled: true);
+        Order cancelledOrder = CreateOrder(stockId: stockId, side: OrderSide.Sell, price: 100, quantity: 10, isCancelled: true);
 
         _ordersDbContextMock.Setup(x => x.Orders).ReturnsDbSet([cancelledOrder]);
 
@@ -376,7 +417,7 @@ public class MatchingEngineServiceTests
     }
 
     [Fact]
-    public async Task ProcessAsync_Should_Not_Match_Orders_With_Same_Side()
+    public async Task ProcessAsync_Should_Not_Match_Orders_With_Same_Side_Buy()
     {
         // Arrange
         var stockId = Guid.NewGuid();
@@ -386,13 +427,45 @@ public class MatchingEngineServiceTests
         Order buyOrder1 = CreateOrder(userId: buyer1Id, stockId: stockId, side: OrderSide.Buy, price: 100, quantity: 10);
         Order buyOrder2 = CreateOrder(userId: buyer2Id, stockId: stockId, side: OrderSide.Buy, price: 100, quantity: 10);
 
+        var user1 = new User { Id = buyer1Id, CurrentBalance = 1000 };
+        var user2 = new User { Id = buyer2Id, CurrentBalance = 1000 };
+
         _ordersDbContextMock.Setup(x => x.Orders).ReturnsDbSet([buyOrder1, buyOrder2]);
         _ordersDbContextMock.Setup(x => x.Trades).ReturnsDbSet([]);
+        _usersDbContextMock.Setup(x => x.Users).ReturnsDbSet([user1, user2]);
 
         await _service.StartAsync(CancellationToken.None);
 
         // Act
         List<Trade> executedTrades = await _service.ProcessAsync(buyOrder1, CancellationToken.None);
+
+        // Assert
+        Assert.Empty(executedTrades);
+        _ordersDbContextMock.Verify(x => x.Trades.Add(It.IsAny<Trade>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_Should_Not_Match_Orders_With_Same_Side_Sell()
+    {
+        // Arrange
+        var stockId = Guid.NewGuid();
+        var seller1Id = Guid.NewGuid();
+        var seller2Id = Guid.NewGuid();
+
+        Order sellOrder1 = CreateOrder(userId: seller1Id, stockId: stockId, side: OrderSide.Sell, price: 100, quantity: 10);
+        Order sellOrder2 = CreateOrder(userId: seller2Id, stockId: stockId, side: OrderSide.Sell, price: 100, quantity: 10);
+
+        var user1 = new User { Id = seller1Id, CurrentBalance = 1000 };
+        var user2 = new User { Id = seller2Id, CurrentBalance = 1000 };
+
+        _ordersDbContextMock.Setup(x => x.Orders).ReturnsDbSet([sellOrder1, sellOrder2]);
+        _ordersDbContextMock.Setup(x => x.Trades).ReturnsDbSet([]);
+        _usersDbContextMock.Setup(x => x.Users).ReturnsDbSet([user1, user2]);
+
+        await _service.StartAsync(CancellationToken.None);
+
+        // Act
+        List<Trade> executedTrades = await _service.ProcessAsync(sellOrder1, CancellationToken.None);
 
         // Assert
         Assert.Empty(executedTrades);

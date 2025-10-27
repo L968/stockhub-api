@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Stockhub.Common.Domain.Results;
 using Stockhub.Consumers.MatchingEngine.Domain.Entities;
 using Stockhub.Consumers.MatchingEngine.Domain.Enums;
+using Stockhub.Consumers.MatchingEngine.Domain.Errors;
 using Stockhub.Consumers.MatchingEngine.Domain.ValueObjects;
 using Stockhub.Consumers.MatchingEngine.Infrastructure.Database;
 
@@ -25,29 +26,35 @@ internal sealed class MatchingEngineService(
 
     public async Task<List<Trade>> ProcessAsync(Order incomingOrder, CancellationToken cancellationToken)
     {
+        if (incomingOrder.Side == OrderSide.Buy && !await HasSufficientBalance(incomingOrder, cancellationToken))
+        {
+            await CancelOrder(incomingOrder, cancellationToken);
+            return [];
+        }
+
         OrderBook orderBook = GetOrCreateOrderBook(incomingOrder.StockId);
         orderBook.Add(incomingOrder);
 
         var executedTrades = new List<Trade>();
-        bool continueProcessing = true;
-        while (continueProcessing)
+        while (true)
         {
             List<TradeProposal> proposals = orderBook.ProposeTrades(incomingOrder);
-            continueProcessing = false;
+
+            if (!proposals.Any())
+            {
+                break;
+            }
 
             foreach (TradeProposal proposal in proposals)
             {
                 Result<Trade> result = await ProcessTradeProposalAsync(proposal, orderBook, cancellationToken);
 
-                if (result.IsSuccess)
+                if (result.IsFailure)
                 {
-                    executedTrades.Add(result.Value);
-                }
-                else
-                {
-                    continueProcessing = incomingOrder.Side != OrderSide.Buy;
                     break;
                 }
+
+                executedTrades.Add(result.Value);
             }
         }
 
@@ -73,10 +80,7 @@ internal sealed class MatchingEngineService(
 
             orderBook.Remove(buyOrder.Id);
 
-            return Result.Failure(Error.Conflict(
-                "Order.InsufficientBalance",
-                "The user does not have enough balance to place this buy order."
-            ));
+            return Result.Failure(OrderErrors.InsufficientBalance);
         }
 
         Trade trade = CreateTrade(proposal, buyer, seller);
@@ -130,6 +134,30 @@ internal sealed class MatchingEngineService(
         }
 
         logger.LogInformation("OrderBooks built for {Count} stocks", _orderBooks.Count);
+    }
+
+    private async Task<bool> HasSufficientBalance(Order order, CancellationToken cancellationToken)
+    {
+        User user = await usersDbContext.Users.FirstAsync(u => u.Id == order.UserId, cancellationToken);
+        decimal totalValue = order.Price * order.Quantity;
+
+        if (user.CurrentBalance < totalValue)
+        {
+           logger.LogWarning(
+                "Insufficient balance for buyer {BuyerId}, cancelling order {OrderId}",
+                user.Id, order.Id
+            );
+
+            return false;
+        }
+
+        return true;
+    }
+
+    private async Task CancelOrder(Order order, CancellationToken cancellationToken)
+    {
+        order.Cancel();
+        await ordersDbContext.SaveChangesAsync(cancellationToken);
     }
 
     private OrderBook GetOrCreateOrderBook(Guid stockId)
