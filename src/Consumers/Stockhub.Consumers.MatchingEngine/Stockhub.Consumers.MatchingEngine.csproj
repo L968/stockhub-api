@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\aspire\Stockhub.Aspire\Stockhub.Aspire.ServiceDefaults\Stockhub.Aspire.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\..\Common\Stockhub.Common.Domain\Stockhub.Common.Domain.csproj" />
     <ProjectReference Include="..\..\Common\Stockhub.Common.Infrastructure\Stockhub.Common.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Common\Stockhub.Common.Messaging\Stockhub.Common.Messaging.csproj" />
   </ItemGroup>

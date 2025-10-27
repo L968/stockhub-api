@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Stockhub.Common.Domain.Results;
 using Stockhub.Consumers.MatchingEngine.Domain.Entities;
 using Stockhub.Consumers.MatchingEngine.Domain.Enums;
 using Stockhub.Consumers.MatchingEngine.Domain.ValueObjects;
@@ -22,11 +23,12 @@ internal sealed class MatchingEngineService(
         logger.LogInformation("Matching Engine started with {Count} existing orders", totalOrders);
     }
 
-    public async Task ProcessAsync(Order incomingOrder, CancellationToken cancellationToken)
+    public async Task<List<Trade>> ProcessAsync(Order incomingOrder, CancellationToken cancellationToken)
     {
         OrderBook orderBook = GetOrCreateOrderBook(incomingOrder.StockId);
         orderBook.Add(incomingOrder);
 
+        var executedTrades = new List<Trade>();
         bool continueProcessing = true;
         while (continueProcessing)
         {
@@ -35,11 +37,15 @@ internal sealed class MatchingEngineService(
 
             foreach (TradeProposal proposal in proposals)
             {
-                bool tradeExecuted = await ProcessTradeProposalAsync(proposal, orderBook, cancellationToken);
+                Result<Trade> result = await ProcessTradeProposalAsync(proposal, orderBook, cancellationToken);
 
-                if (!tradeExecuted)
+                if (result.IsSuccess)
                 {
-                    continueProcessing = true;
+                    executedTrades.Add(result.Value);
+                }
+                else
+                {
+                    continueProcessing = incomingOrder.Side != OrderSide.Buy;
                     break;
                 }
             }
@@ -49,9 +55,11 @@ internal sealed class MatchingEngineService(
         {
             _orderBooks.Remove(incomingOrder.StockId);
         }
+
+        return executedTrades;
     }
 
-    private async Task<bool> ProcessTradeProposalAsync(TradeProposal proposal, OrderBook orderBook, CancellationToken cancellationToken)
+    private async Task<Result<Trade>> ProcessTradeProposalAsync(TradeProposal proposal, OrderBook orderBook, CancellationToken cancellationToken)
     {
         (Order buyOrder, Order sellOrder, User buyer, User seller) = await LoadOrdersAndUsersAsync(proposal, cancellationToken);
 
@@ -65,7 +73,10 @@ internal sealed class MatchingEngineService(
 
             orderBook.Remove(buyOrder.Id);
 
-            return false;
+            return Result.Failure(Error.Conflict(
+                "Order.InsufficientBalance",
+                "The user does not have enough balance to place this buy order."
+            ));
         }
 
         Trade trade = CreateTrade(proposal, buyer, seller);
@@ -79,7 +90,7 @@ internal sealed class MatchingEngineService(
             trade.StockId, trade.BuyOrderId, trade.SellOrderId, trade.Price, trade.Quantity
         );
 
-        return true;
+        return trade;
     }
 
     private async Task<(Order buyOrder, Order sellOrder, User buyer, User seller)> LoadOrdersAndUsersAsync(TradeProposal proposal, CancellationToken cancellationToken)
