@@ -7,11 +7,11 @@ using Stockhub.Consumers.MatchingEngine.Infrastructure.Database;
 
 namespace Stockhub.Consumers.MatchingEngine.Application.Services;
 
-internal sealed class MatchingEngine(
+internal sealed class MatchingEngineService(
     OrdersDbContext ordersDbContext,
     UsersDbContext usersDbContext,
-    ILogger<MatchingEngine> logger
-) : IMatchingEngine
+    ILogger<MatchingEngineService> logger
+) : IMatchingEngineService
 {
     private readonly Dictionary<Guid, OrderBook> _orderBooks = [];
 

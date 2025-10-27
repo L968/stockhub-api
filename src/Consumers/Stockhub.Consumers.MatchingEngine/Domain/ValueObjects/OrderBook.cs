@@ -95,7 +95,10 @@ internal sealed class OrderBook(Guid stockId)
 
     private static int CalculateFillQuantity(Order oppositeOrder, int remainingQuantity)
     {
-        return Math.Min(remainingQuantity, oppositeOrder.Quantity - oppositeOrder.FilledQuantity);
+        return Math.Min(
+            remainingQuantity,
+            oppositeOrder.Quantity - oppositeOrder.FilledQuantity
+        );
     }
 
     private void RemoveFilledOrders()

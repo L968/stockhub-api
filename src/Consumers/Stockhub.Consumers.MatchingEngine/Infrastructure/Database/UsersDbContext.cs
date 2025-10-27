@@ -5,14 +5,22 @@ using Stockhub.Consumers.MatchingEngine.Domain.Entities;
 
 namespace Stockhub.Consumers.MatchingEngine.Infrastructure.Database;
 
-internal sealed class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContext(options)
+internal class UsersDbContext : DbContext
 {
-    public DbSet<User> Users { get; set; }
+    public virtual DbSet<User> Users { get; set; }
+
+    public UsersDbContext()
+    {
+    }
+
+    public UsersDbContext(DbContextOptions<UsersDbContext> options)
+        : base(options)
+    {
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(Schemas.Users);
-
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(UsersDbContext).Assembly);
     }
 

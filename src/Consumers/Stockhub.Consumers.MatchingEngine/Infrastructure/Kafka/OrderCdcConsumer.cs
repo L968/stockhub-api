@@ -38,7 +38,7 @@ internal sealed class OrderCdcConsumer(
         {
             case "c":
                 OrderPlacedMapper mapper = scope.GetRequiredService<OrderPlacedMapper>();
-                IMatchingEngine matchingEngine = scope.GetRequiredService<IMatchingEngine>();
+                IMatchingEngineService matchingEngine = scope.GetRequiredService<IMatchingEngineService>();
 
                 Order? placedEvent = mapper.Map(payload);
                 if (placedEvent is not null)

@@ -2,7 +2,7 @@
 
 namespace Stockhub.Consumers.MatchingEngine.Application.Services;
 
-internal interface IMatchingEngine
+internal interface IMatchingEngineService
 {
     Task StartAsync(CancellationToken cancellationToken);
     Task ProcessAsync(Order incomingOrder, CancellationToken cancellationToken);

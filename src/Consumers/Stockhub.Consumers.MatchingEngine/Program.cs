@@ -18,7 +18,7 @@ builder.AddServiceDefaults();
 KafkaSettings kafkaSettings = builder.Configuration.GetSection("Kafka").Get<KafkaSettings>()!;
 builder.Services.AddSingleton(kafkaSettings);
 
-builder.Services.AddSingleton<IMatchingEngine, MatchingEngine>();
+builder.Services.AddSingleton<IMatchingEngineService, MatchingEngineService>();
 builder.Services.AddScoped<OrderPlacedMapper>();
 builder.Services.AddHostedService<OrderCdcConsumer>();
 
