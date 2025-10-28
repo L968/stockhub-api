@@ -25,6 +25,7 @@ public class MatchingEngineServiceTests
         _service = new MatchingEngineService(
             _ordersDbContextMock.Object,
             _usersDbContextMock.Object,
+            new OrderBookRepository(),
             _loggerMock.Object
         );
     }

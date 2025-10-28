@@ -5,6 +5,7 @@ namespace Stockhub.Consumers.MatchingEngine.Domain.ValueObjects;
 
 internal sealed class OrderBook(Guid stockId)
 {
+    private readonly HashSet<Guid> _orderIds = [];
     private readonly List<Order> _buyOrders = [];
     private readonly List<Order> _sellOrders = [];
 
@@ -14,6 +15,11 @@ internal sealed class OrderBook(Guid stockId)
 
     public void Add(Order order)
     {
+        if (!_orderIds.Add(order.Id))
+        {
+            return;
+        }
+
         if (order.Side == OrderSide.Buy)
         {
             _buyOrders.Add(order);
@@ -24,10 +30,28 @@ internal sealed class OrderBook(Guid stockId)
         }
     }
 
-    public void Remove(Guid orderId)
+    public bool Remove(Guid orderId)
     {
-        _buyOrders.RemoveAll(o => o.Id == orderId);
-        _sellOrders.RemoveAll(o => o.Id == orderId);
+        if (!_orderIds.Remove(orderId))
+        {
+            return false;
+        }
+
+        int buyIndex = _buyOrders.FindIndex(o => o.Id == orderId);
+        if (buyIndex >= 0)
+        {
+            _buyOrders.RemoveAt(buyIndex);
+            return true;
+        }
+
+        int sellIndex = _sellOrders.FindIndex(o => o.Id == orderId);
+        if (sellIndex >= 0)
+        {
+            _sellOrders.RemoveAt(sellIndex);
+            return true;
+        }
+
+        return false;
     }
 
     public List<TradeProposal> ProposeTrades(Order incomingOrder)

@@ -12,16 +12,14 @@ namespace Stockhub.Consumers.MatchingEngine.Application.Services;
 internal sealed class MatchingEngineService(
     OrdersDbContext ordersDbContext,
     UsersDbContext usersDbContext,
+    IOrderBookRepository orderBookRepository,
     ILogger<MatchingEngineService> logger
 ) : IMatchingEngineService
 {
-    private readonly Dictionary<Guid, OrderBook> _orderBooks = [];
-
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         await BuildAsync(cancellationToken);
-        int totalOrders = _orderBooks.Sum(o => o.Value.TotalOrders);
-        logger.LogInformation("Matching Engine started with {Count} existing orders", totalOrders);
+        logger.LogInformation("Matching Engine started with {Count} existing orders", orderBookRepository.TotalOrders);
     }
 
     public async Task<List<Trade>> ProcessAsync(Order incomingOrder, CancellationToken cancellationToken)
@@ -32,7 +30,7 @@ internal sealed class MatchingEngineService(
             return [];
         }
 
-        OrderBook orderBook = GetOrCreateOrderBook(incomingOrder.StockId);
+        OrderBook orderBook = orderBookRepository.Get(incomingOrder.StockId);
         orderBook.Add(incomingOrder);
 
         var executedTrades = new List<Trade>();
@@ -60,7 +58,7 @@ internal sealed class MatchingEngineService(
 
         if (orderBook.IsEmpty)
         {
-            _orderBooks.Remove(incomingOrder.StockId);
+            orderBookRepository.Remove(incomingOrder.StockId);
         }
 
         return executedTrades;
@@ -114,26 +112,9 @@ internal sealed class MatchingEngineService(
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        foreach (Order order in openOrders)
-        {
-            OrderBook orderBook = GetOrCreateOrderBook(order.StockId);
+        orderBookRepository.BuildFromOrders(openOrders);
 
-            orderBook.Add(new Order
-            {
-                Id = order.Id,
-                UserId = order.UserId,
-                StockId = order.StockId,
-                Side = order.Side,
-                Price = order.Price,
-                Quantity = order.Quantity,
-                FilledQuantity = order.FilledQuantity,
-                IsCancelled = order.IsCancelled,
-                CreatedAtUtc = order.CreatedAtUtc,
-                UpdatedAtUtc = order.UpdatedAtUtc
-            });
-        }
-
-        logger.LogInformation("OrderBooks built for {Count} stocks", _orderBooks.Count);
+        logger.LogInformation("OrderBooks built for {Count} stocks", orderBookRepository.Count);
     }
 
     private async Task<bool> HasSufficientBalance(Order order, CancellationToken cancellationToken)
@@ -158,17 +139,6 @@ internal sealed class MatchingEngineService(
     {
         order.Cancel();
         await ordersDbContext.SaveChangesAsync(cancellationToken);
-    }
-
-    private OrderBook GetOrCreateOrderBook(Guid stockId)
-    {
-        if (!_orderBooks.TryGetValue(stockId, out OrderBook? orderBook))
-        {
-            orderBook = new OrderBook(stockId);
-            _orderBooks[stockId] = orderBook;
-        }
-
-        return orderBook;
     }
 
     private static Trade CreateTrade(TradeProposal proposal, User buyer, User seller)
