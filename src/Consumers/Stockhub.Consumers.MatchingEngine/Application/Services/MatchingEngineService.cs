@@ -1,5 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using Stockhub.Common.Domain.Results;
 using Stockhub.Consumers.MatchingEngine.Domain.Entities;
 using Stockhub.Consumers.MatchingEngine.Domain.Enums;
@@ -10,18 +9,15 @@ using Stockhub.Consumers.MatchingEngine.Infrastructure.Database;
 namespace Stockhub.Consumers.MatchingEngine.Application.Services;
 
 internal sealed class MatchingEngineService(
-    OrdersDbContext ordersDbContext,
-    UsersDbContext usersDbContext,
     IOrderBookRepository orderBookRepository,
+    IOrderRepository orderRepository,
+    IUserRepository userRepository,
     ILogger<MatchingEngineService> logger
 ) : IMatchingEngineService
 {
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        List<Order> openOrders = await ordersDbContext.Orders
-            .Where(o => o.Status == OrderStatus.Pending || o.Status == OrderStatus.PartiallyFilled)
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
+        IEnumerable<Order> openOrders = await orderRepository.GetAllOpenOrdersAsync(cancellationToken);
 
         orderBookRepository.BuildFromOrders(openOrders);
 
@@ -30,16 +26,15 @@ internal sealed class MatchingEngineService(
 
     public async Task<List<Trade>> ProcessAsync(Order incomingOrder, CancellationToken cancellationToken)
     {
-        OrderBook orderBook = orderBookRepository.Get(incomingOrder.StockId);
-
         if (incomingOrder.Side == OrderSide.Buy && !await HasSufficientBalance(incomingOrder, cancellationToken))
         {
             logger.LogWarning("Insufficient balance for buyer {BuyerId}, cancelling order {OrderId}", incomingOrder.UserId, incomingOrder.Id);
 
-            await CancelOrder(orderBook, incomingOrder.Id, cancellationToken);
+            await orderRepository.CancelAsync(incomingOrder.Id, cancellationToken);
             return [];
         }
 
+        OrderBook orderBook = orderBookRepository.Get(incomingOrder.StockId);
         orderBook.Add(incomingOrder);
 
         var executedTrades = new List<Trade>();
@@ -82,7 +77,8 @@ internal sealed class MatchingEngineService(
         {
             logger.LogWarning("Insufficient balance for buyer {BuyerId}, cancelling order {OrderId}", buyer.Id, buyOrder.Id);
 
-            await CancelOrder(orderBook, buyOrder.Id, cancellationToken);
+            await orderRepository.CancelAsync(buyOrder.Id, cancellationToken);
+            orderBook.Cancel(buyOrder.Id);
 
             return Result.Failure(OrderErrors.InsufficientBalance);
         }
@@ -103,34 +99,18 @@ internal sealed class MatchingEngineService(
 
     private async Task<(Order buyOrder, Order sellOrder, User buyer, User seller)> LoadOrdersAndUsersAsync(TradeProposal proposal, CancellationToken cancellationToken)
     {
-        Order buyOrder = await ordersDbContext.Orders.FirstAsync(o => o.Id == proposal.BuyOrderId, cancellationToken);
-        Order sellOrder = await ordersDbContext.Orders.FirstAsync(o => o.Id == proposal.SellOrderId, cancellationToken);
-        User buyer = await usersDbContext.Users.FirstAsync(u => u.Id == buyOrder.UserId, cancellationToken);
-        User seller = await usersDbContext.Users.FirstAsync(u => u.Id == sellOrder.UserId, cancellationToken);
+        Order buyOrder = await orderRepository.GetAsync(proposal.BuyOrderId, cancellationToken) ?? throw new InvalidOperationException("Buy order not found");
+        Order sellOrder = await orderRepository.GetAsync(proposal.SellOrderId, cancellationToken) ?? throw new InvalidOperationException("Sell order not found");
+        User buyer = await userRepository.GetAsync(buyOrder.UserId, cancellationToken) ?? throw new InvalidOperationException("Buyer not found");
+        User seller = await userRepository.GetAsync(sellOrder.UserId, cancellationToken) ?? throw new InvalidOperationException("Seller not found");
 
         return (buyOrder, sellOrder, buyer, seller);
     }
 
     private async Task<bool> HasSufficientBalance(Order order, CancellationToken cancellationToken)
     {
-        decimal totalValue = order.Price * order.Quantity;
-
-        return await usersDbContext.Users
-            .Where(u => u.Id == order.UserId)
-            .Select(u => u.CurrentBalance >= totalValue)
-            .FirstAsync(cancellationToken);
-    }
-
-    private async Task CancelOrder(OrderBook orderBook, Guid orderId, CancellationToken cancellationToken)
-    {
-        await ordersDbContext.Orders
-            .Where(o => o.Id == orderId)
-            .ExecuteUpdateAsync(setters => setters
-                .SetProperty(o => o.IsCancelled, true), cancellationToken);
-
-        await ordersDbContext.SaveChangesAsync(cancellationToken);
-
-        orderBook.Cancel(orderId);
+        decimal requiredAmount = order.Price * order.Quantity;
+        return await userRepository.HasSufficientBalanceAsync(order.UserId, requiredAmount, cancellationToken);
     }
 
     private async Task ApplyTradeToDatabaseAsync(
@@ -143,13 +123,14 @@ internal sealed class MatchingEngineService(
     {
         buyOrder.Fill(trade.Quantity);
         sellOrder.Fill(trade.Quantity);
+        await orderRepository.UpdateFilledQuantity(buyOrder.Id, buyOrder.FilledQuantity, cancellationToken);
+        await orderRepository.UpdateFilledQuantity(sellOrder.Id, sellOrder.FilledQuantity, cancellationToken);
 
         buyer.CurrentBalance -= trade.Price * trade.Quantity;
         seller.CurrentBalance += trade.Price * trade.Quantity;
+        await userRepository.UpdateBalanceAsync(buyer.Id, buyer.CurrentBalance, cancellationToken);
+        await userRepository.UpdateBalanceAsync(seller.Id, seller.CurrentBalance, cancellationToken);
 
-        ordersDbContext.Trades.Add(trade);
-
-        await ordersDbContext.SaveChangesAsync(cancellationToken);
-        await usersDbContext.SaveChangesAsync(cancellationToken);
+        await orderRepository.AddTradeAsync(trade, cancellationToken);
     }
 }
