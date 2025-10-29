@@ -87,6 +87,15 @@ internal sealed class OrderBook(Guid stockId)
         return proposals;
     }
 
+    public void Cancel(Guid orderId)
+    {
+        Order? order = _buyOrders.FirstOrDefault(o => o.Id == orderId)
+                    ?? _sellOrders.FirstOrDefault(o => o.Id == orderId);
+
+        order?.Cancel();
+        Remove(orderId);
+    }
+
     public void CommitTrade(Trade trade)
     {
         Order? buyOrder = _buyOrders.FirstOrDefault(o => o.Id == trade.BuyOrderId);

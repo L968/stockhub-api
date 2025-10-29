@@ -18,19 +18,28 @@ internal sealed class MatchingEngineService(
 {
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        await BuildAsync(cancellationToken);
+        List<Order> openOrders = await ordersDbContext.Orders
+            .Where(o => o.Status == OrderStatus.Pending || o.Status == OrderStatus.PartiallyFilled)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        orderBookRepository.BuildFromOrders(openOrders);
+
         logger.LogInformation("Matching Engine started with {Count} existing orders", orderBookRepository.TotalOrders);
     }
 
     public async Task<List<Trade>> ProcessAsync(Order incomingOrder, CancellationToken cancellationToken)
     {
+        OrderBook orderBook = orderBookRepository.Get(incomingOrder.StockId);
+
         if (incomingOrder.Side == OrderSide.Buy && !await HasSufficientBalance(incomingOrder, cancellationToken))
         {
-            await CancelOrder(incomingOrder, cancellationToken);
+            logger.LogWarning("Insufficient balance for buyer {BuyerId}, cancelling order {OrderId}", incomingOrder.UserId, incomingOrder.Id);
+
+            await CancelOrder(orderBook, incomingOrder.Id, cancellationToken);
             return [];
         }
 
-        OrderBook orderBook = orderBookRepository.Get(incomingOrder.StockId);
         orderBook.Add(incomingOrder);
 
         var executedTrades = new List<Trade>();
@@ -73,15 +82,12 @@ internal sealed class MatchingEngineService(
         {
             logger.LogWarning("Insufficient balance for buyer {BuyerId}, cancelling order {OrderId}", buyer.Id, buyOrder.Id);
 
-            buyOrder.Cancel();
-            await ordersDbContext.SaveChangesAsync(cancellationToken);
-
-            orderBook.Remove(buyOrder.Id);
+            await CancelOrder(orderBook, buyOrder.Id, cancellationToken);
 
             return Result.Failure(OrderErrors.InsufficientBalance);
         }
 
-        Trade trade = CreateTrade(proposal, buyer, seller);
+        var trade = new Trade(proposal, buyer, seller);
 
         await ApplyTradeToDatabaseAsync(trade, buyOrder, sellOrder, buyer, seller, cancellationToken);
 
@@ -105,52 +111,27 @@ internal sealed class MatchingEngineService(
         return (buyOrder, sellOrder, buyer, seller);
     }
 
-    private async Task BuildAsync(CancellationToken cancellationToken)
-    {
-        List<Order> openOrders = await ordersDbContext.Orders
-            .Where(o => o.Status == OrderStatus.Pending || o.Status == OrderStatus.PartiallyFilled)
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
-
-        orderBookRepository.BuildFromOrders(openOrders);
-
-        logger.LogInformation("OrderBooks built for {Count} stocks", orderBookRepository.Count);
-    }
-
     private async Task<bool> HasSufficientBalance(Order order, CancellationToken cancellationToken)
     {
-        User user = await usersDbContext.Users.FirstAsync(u => u.Id == order.UserId, cancellationToken);
         decimal totalValue = order.Price * order.Quantity;
 
-        if (user.CurrentBalance < totalValue)
-        {
-           logger.LogWarning(
-                "Insufficient balance for buyer {BuyerId}, cancelling order {OrderId}",
-                user.Id, order.Id
-            );
-
-            return false;
-        }
-
-        return true;
+        return await usersDbContext.Users
+            .Where(u => u.Id == order.UserId)
+            .Select(u => u.CurrentBalance >= totalValue)
+            .FirstAsync(cancellationToken);
     }
 
-    private async Task CancelOrder(Order order, CancellationToken cancellationToken)
+    private async Task CancelOrder(OrderBook orderBook, Guid orderId, CancellationToken cancellationToken)
     {
-        order.Cancel();
-        await ordersDbContext.SaveChangesAsync(cancellationToken);
-    }
+        await ordersDbContext.Orders
+            .Where(o => o.Id == orderId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(o => o.IsCancelled, true), cancellationToken);
 
-    private static Trade CreateTrade(TradeProposal proposal, User buyer, User seller)
-        => new(
-            stockId: proposal.StockId,
-            buyerId: buyer.Id,
-            sellerId: seller.Id,
-            buyOrderId: proposal.BuyOrderId,
-            sellOrderId: proposal.SellOrderId,
-            price: proposal.Price,
-            quantity: proposal.Quantity
-        );
+        await ordersDbContext.SaveChangesAsync(cancellationToken);
+
+        orderBook.Cancel(orderId);
+    }
 
     private async Task ApplyTradeToDatabaseAsync(
         Trade trade,

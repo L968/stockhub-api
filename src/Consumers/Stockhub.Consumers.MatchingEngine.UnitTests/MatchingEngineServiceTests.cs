@@ -31,26 +31,6 @@ public class MatchingEngineServiceTests
     }
 
     [Fact]
-    public void CreateTrade_Should_Create_Valid_Trade()
-    {
-        // Arrange
-        var buyer = new User { Id = Guid.NewGuid() };
-        var seller = new User { Id = Guid.NewGuid() };
-        var proposal = new TradeProposal(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 50, 10);
-
-        // Act
-        var trade = typeof(MatchingEngineService)
-            .GetMethod("CreateTrade", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
-            .Invoke(null, [proposal, buyer, seller]) as Trade;
-
-        // Assert
-        Assert.NotNull(trade);
-        Assert.Equal(proposal.StockId, trade.StockId);
-        Assert.Equal(10, trade.Quantity);
-        Assert.Equal(50, trade.Price);
-    }
-
-    [Fact]
     public async Task ProcessAsync_Should_Add_Order_And_Remove_OrderBook_When_Empty()
     {
         // Arrange

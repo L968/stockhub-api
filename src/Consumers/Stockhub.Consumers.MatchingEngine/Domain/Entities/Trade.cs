@@ -1,4 +1,6 @@
-﻿namespace Stockhub.Consumers.MatchingEngine.Domain.Entities;
+﻿using Stockhub.Consumers.MatchingEngine.Domain.ValueObjects;
+
+namespace Stockhub.Consumers.MatchingEngine.Domain.Entities;
 
 internal sealed class Trade
 {
@@ -23,5 +25,18 @@ internal sealed class Trade
         Price = price;
         Quantity = quantity;
         ExecutedAt = DateTime.UtcNow;
+    }
+
+    public Trade(TradeProposal proposal, User buyer, User seller)
+        : this(
+            stockId: proposal.StockId,
+            buyerId: buyer.Id,
+            sellerId: seller.Id,
+            buyOrderId: proposal.BuyOrderId,
+            sellOrderId: proposal.SellOrderId,
+            price: proposal.Price,
+            quantity: proposal.Quantity
+        )
+    {
     }
 }
