@@ -8,6 +8,7 @@ using Stockhub.Common.Infrastructure;
 using Stockhub.Common.Infrastructure.Extensions;
 using Stockhub.Common.Messaging.Consumers.Configuration;
 using Stockhub.Consumers.MatchingEngine.Application.Services;
+using Stockhub.Consumers.MatchingEngine.Application.Validators;
 using Stockhub.Consumers.MatchingEngine.Infrastructure;
 using Stockhub.Consumers.MatchingEngine.Infrastructure.Database;
 using Stockhub.Consumers.MatchingEngine.Infrastructure.Kafka;
@@ -26,6 +27,8 @@ builder.Services.AddScoped<IDbConnection>(sp => new NpgsqlConnection(dbConnectio
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IOrderBookRepository, OrderBookRepository>();
+
+builder.Services.AddScoped<OrderValidator>();
 
 builder.Services.AddSingleton<IMatchingEngineService, MatchingEngineService>();
 

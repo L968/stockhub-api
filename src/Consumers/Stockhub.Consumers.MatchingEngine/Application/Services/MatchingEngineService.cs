@@ -1,8 +1,8 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using FluentValidation.Results;
+using Microsoft.Extensions.Logging;
 using Stockhub.Common.Domain.Results;
+using Stockhub.Consumers.MatchingEngine.Application.Validators;
 using Stockhub.Consumers.MatchingEngine.Domain.Entities;
-using Stockhub.Consumers.MatchingEngine.Domain.Enums;
-using Stockhub.Consumers.MatchingEngine.Domain.Errors;
 using Stockhub.Consumers.MatchingEngine.Domain.ValueObjects;
 using Stockhub.Consumers.MatchingEngine.Infrastructure.Database;
 
@@ -12,6 +12,7 @@ internal sealed class MatchingEngineService(
     IOrderBookRepository orderBookRepository,
     IOrderRepository orderRepository,
     IUserRepository userRepository,
+    OrderValidator orderValidator,
     ILogger<MatchingEngineService> logger
 ) : IMatchingEngineService
 {
@@ -26,19 +27,57 @@ internal sealed class MatchingEngineService(
 
     public async Task<List<Trade>> ProcessAsync(Order incomingOrder, CancellationToken cancellationToken)
     {
-        if (incomingOrder.Side == OrderSide.Buy && !await HasSufficientBalance(incomingOrder, cancellationToken))
-        {
-            logger.LogWarning("Insufficient balance for buyer {BuyerId}, cancelling order {OrderId}", incomingOrder.UserId, incomingOrder.Id);
+        OrderBook orderBook = orderBookRepository.Get(incomingOrder.StockId);
 
-            await orderRepository.CancelAsync(incomingOrder.Id, cancellationToken);
+        Result orderValidation = await ValidateOrderAsync(incomingOrder, orderBook, cancellationToken);
+        if (orderValidation.IsFailure)
+        {
             return [];
         }
 
-        OrderBook orderBook = orderBookRepository.Get(incomingOrder.StockId);
         orderBook.Add(incomingOrder);
 
+        List<Trade> executedTrades = await ExecuteOrderMatchingAsync(incomingOrder, orderBook, cancellationToken);
+
+        if (orderBook.IsEmpty)
+        {
+            orderBookRepository.Remove(incomingOrder.StockId);
+        }
+
+        return executedTrades;
+    }
+
+
+    private async Task<Result> ValidateOrderAsync(Order order, OrderBook orderBook, CancellationToken cancellationToken)
+    {
+        ValidationResult validation = await orderValidator.ValidateAsync(order, cancellationToken);
+
+        if (validation.IsValid)
+        {
+            return Result.Success();
+        }
+
+        ValidationError validationError = ToValidationError(validation);
+
+        logger.LogWarning(
+            "Invalid order {OrderId}: {Errors}",
+            order.Id,
+            string.Join("; ", validationError.Errors.Select(e => e.Description))
+        );
+
+        await orderRepository.CancelAsync(order.Id, cancellationToken);
+        orderBook.Cancel(order.Id);
+
+        return Result.Failure(validationError);
+    }
+
+    private async Task<List<Trade>> ExecuteOrderMatchingAsync(Order incomingOrder, OrderBook orderBook, CancellationToken cancellationToken)
+    {
         var executedTrades = new List<Trade>();
-        while (true)
+        int safetyLimit = orderBook.TotalOrders * 2;
+        int iterationCount = 0;
+
+        while (iterationCount++ < safetyLimit)
         {
             List<TradeProposal> proposals = orderBook.ProposeTrades(incomingOrder);
 
@@ -49,7 +88,7 @@ internal sealed class MatchingEngineService(
 
             foreach (TradeProposal proposal in proposals)
             {
-                Result<Trade> result = await ProcessTradeProposalAsync(proposal, orderBook, cancellationToken);
+                Result<Trade> result = await ExecuteTradeProposalAsync(proposal, orderBook, cancellationToken);
 
                 if (result.IsFailure)
                 {
@@ -60,27 +99,30 @@ internal sealed class MatchingEngineService(
             }
         }
 
-        if (orderBook.IsEmpty)
+        if (iterationCount >= safetyLimit)
         {
-            orderBookRepository.Remove(incomingOrder.StockId);
+            throw new InvalidOperationException(
+                $"Potential infinite loop detected while matching order {incomingOrder.Id}. Iteration limit ({safetyLimit}) exceeded."
+            );
         }
 
         return executedTrades;
     }
 
-    private async Task<Result<Trade>> ProcessTradeProposalAsync(TradeProposal proposal, OrderBook orderBook, CancellationToken cancellationToken)
+    private async Task<Result<Trade>> ExecuteTradeProposalAsync(TradeProposal proposal, OrderBook orderBook, CancellationToken cancellationToken)
     {
         (Order buyOrder, Order sellOrder, User buyer, User seller) = await LoadOrdersAndUsersAsync(proposal, cancellationToken);
 
-        decimal totalValue = proposal.Price * proposal.Quantity;
-        if (buyer.CurrentBalance < totalValue)
+        Result buyValidation = await ValidateOrderAsync(buyOrder, orderBook, cancellationToken);
+        if (buyValidation.IsFailure)
         {
-            logger.LogWarning("Insufficient balance for buyer {BuyerId}, cancelling order {OrderId}", buyer.Id, buyOrder.Id);
+            return buyValidation;
+        }
 
-            await orderRepository.CancelAsync(buyOrder.Id, cancellationToken);
-            orderBook.Cancel(buyOrder.Id);
-
-            return Result.Failure(OrderErrors.InsufficientBalance);
+        Result sellValidation = await ValidateOrderAsync(sellOrder, orderBook,cancellationToken);
+        if (sellValidation.IsFailure)
+        {
+            return buyValidation;
         }
 
         var trade = new Trade(proposal, buyer, seller);
@@ -107,12 +149,6 @@ internal sealed class MatchingEngineService(
         return (buyOrder, sellOrder, buyer, seller);
     }
 
-    private async Task<bool> HasSufficientBalance(Order order, CancellationToken cancellationToken)
-    {
-        decimal requiredAmount = order.Price * order.Quantity;
-        return await userRepository.HasSufficientBalanceAsync(order.UserId, requiredAmount, cancellationToken);
-    }
-
     private async Task ApplyTradeToDatabaseAsync(
         Trade trade,
         Order buyOrder,
@@ -126,11 +162,20 @@ internal sealed class MatchingEngineService(
         await orderRepository.UpdateFilledQuantity(buyOrder.Id, buyOrder.FilledQuantity, cancellationToken);
         await orderRepository.UpdateFilledQuantity(sellOrder.Id, sellOrder.FilledQuantity, cancellationToken);
 
-        buyer.CurrentBalance -= trade.Price * trade.Quantity;
-        seller.CurrentBalance += trade.Price * trade.Quantity;
+        buyer.Debit(trade.TotalValue);
+        seller.Credit(trade.TotalValue);
         await userRepository.UpdateBalanceAsync(buyer.Id, buyer.CurrentBalance, cancellationToken);
         await userRepository.UpdateBalanceAsync(seller.Id, seller.CurrentBalance, cancellationToken);
 
         await orderRepository.AddTradeAsync(trade, cancellationToken);
+    }
+
+    private static ValidationError ToValidationError(ValidationResult validation)
+    {
+        Error[] errors = validation.Errors
+            .Select(f => Error.Problem(f.ErrorCode ?? f.PropertyName, f.ErrorMessage))
+            .ToArray();
+
+        return new ValidationError(errors);
     }
 }

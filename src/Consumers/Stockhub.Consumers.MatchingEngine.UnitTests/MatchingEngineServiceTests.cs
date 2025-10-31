@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using Moq;
 using Stockhub.Consumers.MatchingEngine.Application.Services;
+using Stockhub.Consumers.MatchingEngine.Application.Validators;
 using Stockhub.Consumers.MatchingEngine.Domain.Entities;
 using Stockhub.Consumers.MatchingEngine.Domain.Enums;
 using Stockhub.Consumers.MatchingEngine.Infrastructure.Database;
@@ -36,6 +37,7 @@ public class MatchingEngineServiceTests
             new OrderBookRepository(),
             _orderRepositoryMock.Object,
             _userRepositoryMock.Object,
+            new OrderValidator(_userRepositoryMock.Object),
             _loggerMock.Object
         );
     }
@@ -184,7 +186,7 @@ public class MatchingEngineServiceTests
         Assert.Equal(0, sell2.FilledQuantity);
         Assert.Equal(0, sell3.FilledQuantity);
 
-        _loggerMock.VerifyLog(LogLevel.Warning, "Insufficient balance", Times.AtLeast(1));
+        _loggerMock.VerifyLog(LogLevel.Warning, "Invalid order", Times.AtLeast(1));
     }
 
     [Fact]
@@ -222,7 +224,7 @@ public class MatchingEngineServiceTests
         List<Trade> executedTrades = await _service.ProcessAsync(sellOrder, CancellationToken.None);
 
         // Assert
-        _loggerMock.VerifyLog(LogLevel.Warning, "Insufficient balance", Times.AtLeast(1));
+        _loggerMock.VerifyLog(LogLevel.Warning, "Invalid order", Times.AtLeast(1));
         _orderRepositoryMock.Verify(x => x.CancelAsync(buyOrder.Id, It.IsAny<CancellationToken>()), Times.Once);
 
         Assert.False(sellOrder.IsCancelled);
@@ -268,7 +270,7 @@ public class MatchingEngineServiceTests
         List<Trade> executedTrades = await _service.ProcessAsync(buyOrder, CancellationToken.None);
 
         // Assert
-        _loggerMock.VerifyLog(LogLevel.Warning, "Insufficient balance", Times.AtLeast(1));
+        _loggerMock.VerifyLog(LogLevel.Warning, "Invalid order", Times.AtLeast(1));
         _orderRepositoryMock.Verify(x => x.CancelAsync(buyOrder.Id, It.IsAny<CancellationToken>()), Times.Once);
         Assert.Empty(executedTrades);
         Assert.Equal(50, buyer.CurrentBalance);

@@ -14,6 +14,8 @@ internal sealed class Trade
     public int Quantity { get; private set; }
     public DateTime ExecutedAt { get; private set; }
 
+    public decimal TotalValue => Price * Quantity;
+
     public Trade(Guid stockId, Guid buyerId, Guid sellerId, Guid buyOrderId, Guid sellOrderId, decimal price, int quantity)
     {
         Id = Guid.CreateVersion7();

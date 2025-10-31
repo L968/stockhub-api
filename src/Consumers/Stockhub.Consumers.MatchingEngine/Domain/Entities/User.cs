@@ -10,4 +10,19 @@ internal sealed class User : IAuditableEntity
     public decimal CurrentBalance { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
+
+    public void Debit(decimal amount)
+    {
+        if (amount > CurrentBalance)
+        {
+            throw new InvalidOperationException("Insufficient balance");
+        }
+
+        CurrentBalance -= amount;
+    }
+
+    public void Credit(decimal amount)
+    {
+        CurrentBalance += amount;
+    }
 }
