@@ -5,11 +5,12 @@ namespace Stockhub.Consumers.MatchingEngine.Infrastructure.Database;
 
 internal interface IOrderBookRepository
 {
-    int Count { get; }
-    int TotalOrders { get; }
-
-    OrderBook Get(Guid stockId);
-    void Set(OrderBook orderBook);
-    void Remove(Guid stockId);
     void BuildFromOrders(IEnumerable<Order> orders);
+
+    void AddOrder(Order order);
+    void CancelOrder(Guid orderId);
+    void UpdateOrderFilledQuantity(Guid orderId, int filledQuantity);
+    void RemoveOrder(Guid orderId);
+
+    OrderBook GetOrderBookSnapshot(Guid stockId);
 }

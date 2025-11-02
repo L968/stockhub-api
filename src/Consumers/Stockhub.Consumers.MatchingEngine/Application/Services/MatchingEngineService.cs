@@ -22,33 +22,26 @@ internal sealed class MatchingEngineService(
 
         orderBookRepository.BuildFromOrders(openOrders);
 
-        logger.LogInformation("Matching Engine started with {Count} existing orders", orderBookRepository.TotalOrders);
+        logger.LogInformation("Matching Engine started with {Count} existing orders", openOrders.Count());
     }
 
     public async Task<List<Trade>> ProcessAsync(Order incomingOrder, CancellationToken cancellationToken)
     {
-        OrderBook orderBook = orderBookRepository.Get(incomingOrder.StockId);
-
-        Result orderValidation = await ValidateOrderAsync(incomingOrder, orderBook, cancellationToken);
+        Result orderValidation = await ValidateOrderAsync(incomingOrder, cancellationToken);
         if (orderValidation.IsFailure)
         {
             return [];
         }
 
-        orderBook.Add(incomingOrder);
+        orderBookRepository.AddOrder(incomingOrder);
 
-        List<Trade> executedTrades = await ExecuteOrderMatchingAsync(incomingOrder, orderBook, cancellationToken);
-
-        if (orderBook.IsEmpty)
-        {
-            orderBookRepository.Remove(incomingOrder.StockId);
-        }
+        List<Trade> executedTrades = await ExecuteOrderMatchingAsync(incomingOrder, cancellationToken);
 
         return executedTrades;
     }
 
 
-    private async Task<Result> ValidateOrderAsync(Order order, OrderBook orderBook, CancellationToken cancellationToken)
+    private async Task<Result> ValidateOrderAsync(Order order, CancellationToken cancellationToken)
     {
         ValidationResult validation = await orderValidator.ValidateAsync(order, cancellationToken);
 
@@ -65,16 +58,18 @@ internal sealed class MatchingEngineService(
             string.Join("; ", validationError.Errors.Select(e => e.Description))
         );
 
+        order.Cancel();
+        orderBookRepository.CancelOrder(order.Id);
         await orderRepository.CancelAsync(order.Id, cancellationToken);
-        orderBook.Cancel(order.Id);
 
         return Result.Failure(validationError);
     }
 
-    private async Task<List<Trade>> ExecuteOrderMatchingAsync(Order incomingOrder, OrderBook orderBook, CancellationToken cancellationToken)
+    private async Task<List<Trade>> ExecuteOrderMatchingAsync(Order incomingOrder, CancellationToken cancellationToken)
     {
         var executedTrades = new List<Trade>();
-        int safetyLimit = orderBook.TotalOrders * 2;
+        OrderBook orderBook = orderBookRepository.GetOrderBookSnapshot(incomingOrder.StockId);
+        int safetyLimit = orderBook.Count * 2;
         int iterationCount = 0;
 
         while (iterationCount++ < safetyLimit)
@@ -88,7 +83,7 @@ internal sealed class MatchingEngineService(
 
             foreach (TradeProposal proposal in proposals)
             {
-                Result<Trade> result = await ExecuteTradeProposalAsync(proposal, orderBook, cancellationToken);
+                Result<Trade> result = await ExecuteTradeProposalAsync(proposal, cancellationToken);
 
                 if (result.IsFailure)
                 {
@@ -109,17 +104,17 @@ internal sealed class MatchingEngineService(
         return executedTrades;
     }
 
-    private async Task<Result<Trade>> ExecuteTradeProposalAsync(TradeProposal proposal, OrderBook orderBook, CancellationToken cancellationToken)
+    private async Task<Result<Trade>> ExecuteTradeProposalAsync(TradeProposal proposal, CancellationToken cancellationToken)
     {
         (Order buyOrder, Order sellOrder, User buyer, User seller) = await LoadOrdersAndUsersAsync(proposal, cancellationToken);
 
-        Result buyValidation = await ValidateOrderAsync(buyOrder, orderBook, cancellationToken);
+        Result buyValidation = await ValidateOrderAsync(buyOrder, cancellationToken);
         if (buyValidation.IsFailure)
         {
             return buyValidation;
         }
 
-        Result sellValidation = await ValidateOrderAsync(sellOrder, orderBook,cancellationToken);
+        Result sellValidation = await ValidateOrderAsync(sellOrder, cancellationToken);
         if (sellValidation.IsFailure)
         {
             return buyValidation;
@@ -127,9 +122,13 @@ internal sealed class MatchingEngineService(
 
         var trade = new Trade(proposal, buyer, seller);
 
+        buyOrder.Fill(trade.Quantity);
+        sellOrder.Fill(trade.Quantity);
+
         await ApplyTradeToDatabaseAsync(trade, buyOrder, sellOrder, buyer, seller, cancellationToken);
 
-        orderBook.CommitTrade(trade);
+        orderBookRepository.UpdateOrderFilledQuantity(buyOrder.Id, buyOrder.FilledQuantity);
+        orderBookRepository.UpdateOrderFilledQuantity(sellOrder.Id, sellOrder.FilledQuantity);
 
         logger.LogInformation(
             "Trade executed: {StockId} | Buy {BuyOrderId} ↔ Sell {SellOrderId} @ {Price} x {Quantity}",
@@ -157,10 +156,8 @@ internal sealed class MatchingEngineService(
         User seller,
         CancellationToken cancellationToken)
     {
-        buyOrder.Fill(trade.Quantity);
-        sellOrder.Fill(trade.Quantity);
-        await orderRepository.UpdateFilledQuantity(buyOrder.Id, buyOrder.FilledQuantity, cancellationToken);
-        await orderRepository.UpdateFilledQuantity(sellOrder.Id, sellOrder.FilledQuantity, cancellationToken);
+        await orderRepository.UpdateFilledQuantityAsync(buyOrder.Id, buyOrder.FilledQuantity, cancellationToken);
+        await orderRepository.UpdateFilledQuantityAsync(sellOrder.Id, sellOrder.FilledQuantity, cancellationToken);
 
         buyer.Debit(trade.TotalValue);
         seller.Credit(trade.TotalValue);

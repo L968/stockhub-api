@@ -22,7 +22,7 @@ public class MatchingEngineServiceTests
         _loggerMock = new Mock<ILogger<MatchingEngineService>>();
 
         _orderRepositoryMock
-            .Setup(x => x.UpdateFilledQuantity(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.UpdateFilledQuantityAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         _orderRepositoryMock

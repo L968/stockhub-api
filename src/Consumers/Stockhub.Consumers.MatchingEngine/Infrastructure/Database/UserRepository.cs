@@ -1,9 +1,8 @@
 ﻿using System.Data;
 using Dapper;
 using Stockhub.Consumers.MatchingEngine.Domain.Entities;
-using Stockhub.Consumers.MatchingEngine.Infrastructure.Database;
 
-namespace Stockhub.Consumers.MatchingEngine.Infrastructure;
+namespace Stockhub.Consumers.MatchingEngine.Infrastructure.Database;
 
 internal sealed class UserRepository(IDbConnection connection) : IUserRepository
 {

@@ -1,9 +1,8 @@
-﻿using Stockhub.Common.Domain;
-using Stockhub.Consumers.MatchingEngine.Domain.Enums;
+﻿using Stockhub.Consumers.MatchingEngine.Domain.Enums;
 
 namespace Stockhub.Consumers.MatchingEngine.Domain.Entities;
 
-internal sealed class Order : IAuditableEntity
+internal sealed class Order
 {
     public Guid Id { get; set; }
     public Guid UserId { get; set; }

@@ -3,56 +3,9 @@ using Stockhub.Consumers.MatchingEngine.Domain.Enums;
 
 namespace Stockhub.Consumers.MatchingEngine.Domain.ValueObjects;
 
-internal sealed class OrderBook(Guid stockId)
+internal sealed class OrderBook(Guid stockId, List<Order> orders)
 {
-    private readonly HashSet<Guid> _orderIds = [];
-    private readonly List<Order> _buyOrders = [];
-    private readonly List<Order> _sellOrders = [];
-
-    public Guid StockId { get; } = stockId;
-    public bool IsEmpty => !_buyOrders.Any() && !_sellOrders.Any();
-    public int TotalOrders => _buyOrders.Count + _sellOrders.Count;
-
-    public void Add(Order order)
-    {
-        if (!_orderIds.Add(order.Id))
-        {
-            return;
-        }
-
-        if (order.Side == OrderSide.Buy)
-        {
-            _buyOrders.Add(order);
-        }
-        else
-        {
-            _sellOrders.Add(order);
-        }
-    }
-
-    public bool Remove(Guid orderId)
-    {
-        if (!_orderIds.Remove(orderId))
-        {
-            return false;
-        }
-
-        int buyIndex = _buyOrders.FindIndex(o => o.Id == orderId);
-        if (buyIndex >= 0)
-        {
-            _buyOrders.RemoveAt(buyIndex);
-            return true;
-        }
-
-        int sellIndex = _sellOrders.FindIndex(o => o.Id == orderId);
-        if (sellIndex >= 0)
-        {
-            _sellOrders.RemoveAt(sellIndex);
-            return true;
-        }
-
-        return false;
-    }
+    public int Count => orders.Count;
 
     public List<TradeProposal> ProposeTrades(Order incomingOrder)
     {
@@ -70,10 +23,10 @@ internal sealed class OrderBook(Guid stockId)
                 break;
             }
 
-            int fillQuantity = CalculateFillQuantity(oppositeOrder, remainingQuantity);
+            int fillQuantity = Math.Min(remainingQuantity, oppositeOrder.Quantity - oppositeOrder.FilledQuantity);
 
             var proposal = new TradeProposal(
-                StockId: StockId,
+                stockId,
                 BuyOrderId: incomingOrder.Side == OrderSide.Buy ? incomingOrder.Id : oppositeOrder.Id,
                 SellOrderId: incomingOrder.Side == OrderSide.Sell ? incomingOrder.Id : oppositeOrder.Id,
                 Price: incomingOrder.Side == OrderSide.Buy ? oppositeOrder.Price : incomingOrder.Price,
@@ -87,56 +40,21 @@ internal sealed class OrderBook(Guid stockId)
         return proposals;
     }
 
-    public void Cancel(Guid orderId)
-    {
-        Order? order = _buyOrders.FirstOrDefault(o => o.Id == orderId)
-                    ?? _sellOrders.FirstOrDefault(o => o.Id == orderId);
-
-        order?.Cancel();
-        Remove(orderId);
-    }
-
-    public void CommitTrade(Trade trade)
-    {
-        Order? buyOrder = _buyOrders.FirstOrDefault(o => o.Id == trade.BuyOrderId);
-        Order? sellOrder = _sellOrders.FirstOrDefault(o => o.Id == trade.SellOrderId);
-
-        buyOrder?.Fill(trade.Quantity);
-        sellOrder?.Fill(trade.Quantity);
-
-        RemoveFilledOrders();
-    }
-
-
     private List<Order> FindMatchingBuyOrders(Order sellOrder)
     {
-        return _buyOrders
-            .Where(b => b.Price >= sellOrder.Price && b.FilledQuantity < b.Quantity)
-            .OrderByDescending(b => b.Price)
-            .ThenBy(b => b.CreatedAtUtc)
+        return orders
+            .Where(o => o.Side == OrderSide.Buy && o.Price >= sellOrder.Price && o.FilledQuantity < o.Quantity)
+            .OrderByDescending(o => o.Price)
+            .ThenBy(o => o.CreatedAtUtc)
             .ToList();
     }
 
     private List<Order> FindMatchingSellOrders(Order buyOrder)
     {
-        return _sellOrders
-            .Where(s => s.Price <= buyOrder.Price && s.FilledQuantity < s.Quantity)
-            .OrderBy(s => s.Price)
-            .ThenBy(s => s.CreatedAtUtc)
+        return orders
+            .Where(o => o.Side == OrderSide.Sell && o.Price <= buyOrder.Price && o.FilledQuantity < o.Quantity)
+            .OrderBy(o => o.Price)
+            .ThenBy(o => o.CreatedAtUtc)
             .ToList();
-    }
-
-    private static int CalculateFillQuantity(Order oppositeOrder, int remainingQuantity)
-    {
-        return Math.Min(
-            remainingQuantity,
-            oppositeOrder.Quantity - oppositeOrder.FilledQuantity
-        );
-    }
-
-    private void RemoveFilledOrders()
-    {
-        _buyOrders.RemoveAll(o => o.Status == OrderStatus.Filled || o.Status == OrderStatus.Cancelled);
-        _sellOrders.RemoveAll(o => o.Status == OrderStatus.Filled || o.Status == OrderStatus.Cancelled);
     }
 }
