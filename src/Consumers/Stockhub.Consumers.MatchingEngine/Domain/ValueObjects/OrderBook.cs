@@ -6,6 +6,7 @@ namespace Stockhub.Consumers.MatchingEngine.Domain.ValueObjects;
 internal sealed class OrderBook(Guid stockId, List<Order> orders)
 {
     public int Count => orders.Count;
+    public IReadOnlyList<Order> Orders => orders;
 
     public List<TradeProposal> ProposeTrades(Order incomingOrder)
     {
@@ -43,7 +44,10 @@ internal sealed class OrderBook(Guid stockId, List<Order> orders)
     private List<Order> FindMatchingBuyOrders(Order sellOrder)
     {
         return orders
-            .Where(o => o.Side == OrderSide.Buy && o.Price >= sellOrder.Price && o.FilledQuantity < o.Quantity)
+            .Where(o => o.Side == OrderSide.Buy
+                        && !o.IsCancelled
+                        && o.Price >= sellOrder.Price
+                        && o.FilledQuantity < o.Quantity)
             .OrderByDescending(o => o.Price)
             .ThenBy(o => o.CreatedAtUtc)
             .ToList();
@@ -52,7 +56,10 @@ internal sealed class OrderBook(Guid stockId, List<Order> orders)
     private List<Order> FindMatchingSellOrders(Order buyOrder)
     {
         return orders
-            .Where(o => o.Side == OrderSide.Sell && o.Price <= buyOrder.Price && o.FilledQuantity < o.Quantity)
+            .Where(o => o.Side == OrderSide.Sell
+                        && !o.IsCancelled
+                        && o.Price <= buyOrder.Price
+                        && o.FilledQuantity < o.Quantity)
             .OrderBy(o => o.Price)
             .ThenBy(o => o.CreatedAtUtc)
             .ToList();

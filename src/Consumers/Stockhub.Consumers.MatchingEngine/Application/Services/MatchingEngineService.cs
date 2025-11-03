@@ -30,6 +30,7 @@ internal sealed class MatchingEngineService(
         Result orderValidation = await ValidateOrderAsync(incomingOrder, cancellationToken);
         if (orderValidation.IsFailure)
         {
+            await CommitCancelOrder(incomingOrder, cancellationToken);
             return [];
         }
 
@@ -53,14 +54,10 @@ internal sealed class MatchingEngineService(
         ValidationError validationError = ToValidationError(validation);
 
         logger.LogWarning(
-            "Invalid order {OrderId}: {Errors}",
-            order.Id,
+            "Invalid order {OrderId} (User {UserId}, Stock {StockId}): {Errors}",
+            order.Id, order.UserId, order.StockId,
             string.Join("; ", validationError.Errors.Select(e => e.Description))
         );
-
-        order.Cancel();
-        orderBookRepository.CancelOrder(order.Id);
-        await orderRepository.CancelAsync(order.Id, cancellationToken);
 
         return Result.Failure(validationError);
     }
@@ -111,24 +108,20 @@ internal sealed class MatchingEngineService(
         Result buyValidation = await ValidateOrderAsync(buyOrder, cancellationToken);
         if (buyValidation.IsFailure)
         {
+            await CommitCancelOrder(buyOrder, cancellationToken);
             return buyValidation;
         }
 
         Result sellValidation = await ValidateOrderAsync(sellOrder, cancellationToken);
         if (sellValidation.IsFailure)
         {
-            return buyValidation;
+            await CommitCancelOrder(sellOrder, cancellationToken);
+            return sellValidation;
         }
 
         var trade = new Trade(proposal, buyer, seller);
 
-        buyOrder.Fill(trade.Quantity);
-        sellOrder.Fill(trade.Quantity);
-
-        await ApplyTradeToDatabaseAsync(trade, buyOrder, sellOrder, buyer, seller, cancellationToken);
-
-        orderBookRepository.UpdateOrderFilledQuantity(buyOrder.Id, buyOrder.FilledQuantity);
-        orderBookRepository.UpdateOrderFilledQuantity(sellOrder.Id, sellOrder.FilledQuantity);
+        await CommitTrade(trade, buyOrder, sellOrder, buyer, seller, cancellationToken);
 
         logger.LogInformation(
             "Trade executed: {StockId} | Buy {BuyOrderId} ↔ Sell {SellOrderId} @ {Price} x {Quantity}",
@@ -148,7 +141,7 @@ internal sealed class MatchingEngineService(
         return (buyOrder, sellOrder, buyer, seller);
     }
 
-    private async Task ApplyTradeToDatabaseAsync(
+    private async Task CommitTrade(
         Trade trade,
         Order buyOrder,
         Order sellOrder,
@@ -156,6 +149,8 @@ internal sealed class MatchingEngineService(
         User seller,
         CancellationToken cancellationToken)
     {
+        buyOrder.Fill(trade.Quantity);
+        sellOrder.Fill(trade.Quantity);
         await orderRepository.UpdateFilledQuantityAsync(buyOrder.Id, buyOrder.FilledQuantity, cancellationToken);
         await orderRepository.UpdateFilledQuantityAsync(sellOrder.Id, sellOrder.FilledQuantity, cancellationToken);
 
@@ -165,6 +160,15 @@ internal sealed class MatchingEngineService(
         await userRepository.UpdateBalanceAsync(seller.Id, seller.CurrentBalance, cancellationToken);
 
         await orderRepository.AddTradeAsync(trade, cancellationToken);
+
+        orderBookRepository.UpdateOrderFilledQuantity(buyOrder.Id, buyOrder.FilledQuantity);
+        orderBookRepository.UpdateOrderFilledQuantity(sellOrder.Id, sellOrder.FilledQuantity);
+    }
+
+    private async Task CommitCancelOrder(Order order, CancellationToken cancellationToken)
+    {
+        await orderRepository.CancelAsync(order.Id, cancellationToken);
+        orderBookRepository.CancelOrder(order.Id);
     }
 
     private static ValidationError ToValidationError(ValidationResult validation)

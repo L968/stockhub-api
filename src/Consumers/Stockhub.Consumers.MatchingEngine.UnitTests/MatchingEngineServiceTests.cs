@@ -66,11 +66,11 @@ public class MatchingEngineServiceTests
         // Arrange
         var stockId = Guid.NewGuid();
 
-        Order buy1 = CreateOrder(Guid.NewGuid(), stockId, OrderSide.Buy, price: 100, quantity: 5);
-        Order buy2 = CreateOrder(Guid.NewGuid(), stockId, OrderSide.Buy, price: 101, quantity: 5);
-        Order buy3 = CreateOrder(Guid.NewGuid(), stockId, OrderSide.Buy, price: 102, quantity: 5);
-        Order buy4 = CreateOrder(Guid.NewGuid(), stockId, OrderSide.Buy, price: 103, quantity: 5);
-        Order sell1 = CreateOrder(Guid.NewGuid(), stockId, OrderSide.Sell, price: 100, quantity: 10);
+        Order buy1 = CreateOrder(Guid.NewGuid(), Guid.NewGuid(), stockId, OrderSide.Buy, price: 100, quantity: 5);
+        Order buy2 = CreateOrder(Guid.NewGuid(), Guid.NewGuid(), stockId, OrderSide.Buy, price: 101, quantity: 5);
+        Order buy3 = CreateOrder(Guid.NewGuid(), Guid.NewGuid(), stockId, OrderSide.Buy, price: 102, quantity: 5);
+        Order buy4 = CreateOrder(Guid.NewGuid(), Guid.NewGuid(), stockId, OrderSide.Buy, price: 103, quantity: 5);
+        Order sell1 = CreateOrder(Guid.NewGuid(), Guid.NewGuid(), stockId, OrderSide.Sell, price: 100, quantity: 10);
 
         var user1 = new User { Id = buy1.UserId, CurrentBalance = 1000 };
         var user2 = new User { Id = buy2.UserId, CurrentBalance = 1000 };
@@ -145,10 +145,10 @@ public class MatchingEngineServiceTests
         // Arrange
         var stockId = Guid.NewGuid();
 
-        Order buyIncoming = CreateOrder(Guid.NewGuid(), stockId, OrderSide.Buy, price: 100, quantity: 10);
-        Order sell1 = CreateOrder(Guid.NewGuid(), stockId, OrderSide.Sell, price: 100, quantity: 3);
-        Order sell2 = CreateOrder(Guid.NewGuid(), stockId, OrderSide.Sell, price: 100, quantity: 4);
-        Order sell3 = CreateOrder(Guid.NewGuid(), stockId, OrderSide.Sell, price: 100, quantity: 5);
+        Order buyIncoming = CreateOrder(Guid.NewGuid(), Guid.NewGuid(), stockId, OrderSide.Buy, price: 100, quantity: 10);
+        Order sell1 = CreateOrder(Guid.NewGuid(), Guid.NewGuid(), stockId, OrderSide.Sell, price: 100, quantity: 3);
+        Order sell2 = CreateOrder(Guid.NewGuid(), Guid.NewGuid(), stockId, OrderSide.Sell, price: 100, quantity: 4);
+        Order sell3 = CreateOrder(Guid.NewGuid(), Guid.NewGuid(), stockId, OrderSide.Sell, price: 100, quantity: 5);
 
         var buyer = new User { Id = buyIncoming.UserId, CurrentBalance = 500 };
         var seller1 = new User { Id = sell1.UserId, CurrentBalance = 0 };
@@ -495,6 +495,89 @@ public class MatchingEngineServiceTests
     }
 
     [Fact]
+    public async Task ProcessAsync_Should_Not_Execute_Trade_If_Order_Is_Cancelled_In_Repository()
+    {
+        // Arrange
+        var stockId = Guid.NewGuid();
+
+        Order buy1 = CreateOrder(Guid.NewGuid(), Guid.NewGuid(), stockId, OrderSide.Buy, price: 100, quantity: 5);
+        Order buy2 = CreateOrder(Guid.NewGuid(), Guid.NewGuid(), stockId, OrderSide.Buy, price: 101, quantity: 5);
+        Order buy3 = CreateOrder(Guid.NewGuid(), Guid.NewGuid(), stockId, OrderSide.Buy, price: 102, quantity: 5);
+        Order buy4 = CreateOrder(Guid.NewGuid(), Guid.NewGuid(), stockId, OrderSide.Buy, price: 103, quantity: 5);
+        Order sell1 = CreateOrder(Guid.NewGuid(), Guid.NewGuid(), stockId, OrderSide.Sell, price: 100, quantity: 10);
+
+        var user1 = new User { Id = buy1.UserId, CurrentBalance = 1000 };
+        var user2 = new User { Id = buy2.UserId, CurrentBalance = 1000 };
+        var user3 = new User { Id = buy3.UserId, CurrentBalance = 0 };
+        var user4 = new User { Id = buy4.UserId, CurrentBalance = 1000 };
+        var user5 = new User { Id = sell1.UserId, CurrentBalance = 0 };
+
+        Order[] allOrders = [buy1, buy2, buy3, buy4, sell1];
+        User[] allUsers = [user1, user2, user3, user4, user5];
+
+        _orderRepositoryMock
+            .Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(allOrders);
+
+        _orderRepositoryMock
+            .Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid id, CancellationToken _) => allOrders.First(o => o.Id == id));
+
+        _userRepositoryMock
+            .Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid id, CancellationToken _) => allUsers.First(u => u.Id == id));
+
+        _userRepositoryMock
+            .Setup(x => x.HasSufficientBalanceAsync(It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid userId, decimal amount, CancellationToken _) =>
+            {
+                User user = allUsers.First(u => u.Id == userId);
+                return user.CurrentBalance >= amount;
+            });
+
+        await _service.StartAsync(CancellationToken.None);
+
+        _orderRepositoryMock
+            .Setup(x => x.GetAsync(buy3.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => CreateOrder(buy3.Id, buy3.UserId, buy3.StockId, buy3.Side, buy3.Price, buy3.Quantity, buy3.FilledQuantity, true));
+
+        // Act
+        List<Trade> executedTrades = await _service.ProcessAsync(sell1, CancellationToken.None);
+
+        // Assert
+        _orderRepositoryMock.Verify(
+            x => x.CancelAsync(buy3.Id, It.IsAny<CancellationToken>()),
+            Times.Once
+        );
+
+        Assert.DoesNotContain(executedTrades, t => t.BuyOrderId == buy3.Id);
+        Assert.Equal(2, executedTrades.Count);
+
+        Assert.Collection(executedTrades,
+            t =>
+            {
+                Assert.Equal(stockId, t.StockId);
+                Assert.Equal(buy4.UserId, t.BuyerId);
+                Assert.Equal(sell1.UserId, t.SellerId);
+                Assert.Equal(buy4.Id, t.BuyOrderId);
+                Assert.Equal(sell1.Id, t.SellOrderId);
+                Assert.Equal(100, t.Price);
+                Assert.Equal(5, t.Quantity);
+            },
+            t =>
+            {
+                Assert.Equal(stockId, t.StockId);
+                Assert.Equal(buy2.UserId, t.BuyerId);
+                Assert.Equal(sell1.UserId, t.SellerId);
+                Assert.Equal(buy2.Id, t.BuyOrderId);
+                Assert.Equal(sell1.Id, t.SellOrderId);
+                Assert.Equal(100, t.Price);
+                Assert.Equal(5, t.Quantity);
+            }
+        );
+    }
+
+    [Fact]
     public async Task ProcessAsync_Should_Not_Match_Orders_With_Same_Side_Buy()
     {
         // Arrange
@@ -632,6 +715,7 @@ public class MatchingEngineServiceTests
     }
 
     private static Order CreateOrder(
+        Guid? orderId = null,
         Guid? userId = null,
         Guid? stockId = null,
         OrderSide side = OrderSide.Buy,
@@ -644,9 +728,9 @@ public class MatchingEngineServiceTests
 
         return new Order
         {
-            Id = Guid.NewGuid(),
-            UserId = userId ?? Guid.NewGuid(),
-            StockId = stockId ?? Guid.NewGuid(),
+            Id = orderId ?? Guid.CreateVersion7(),
+            UserId = userId ?? Guid.CreateVersion7(),
+            StockId = stockId ?? Guid.CreateVersion7(),
             Side = side,
             Price = price,
             Quantity = quantity,
@@ -654,6 +738,23 @@ public class MatchingEngineServiceTests
             IsCancelled = isCancelled,
             CreatedAtUtc = now,
             UpdatedAtUtc = now
+        };
+    }
+
+    private static Order CloneOrder(Order source)
+    {
+        return new Order
+        {
+            Id = source.Id,
+            UserId = source.UserId,
+            StockId = source.StockId,
+            Side = source.Side,
+            Price = source.Price,
+            Quantity = source.Quantity,
+            FilledQuantity = source.FilledQuantity,
+            IsCancelled = source.IsCancelled,
+            CreatedAtUtc = source.CreatedAtUtc,
+            UpdatedAtUtc = source.UpdatedAtUtc
         };
     }
 }
