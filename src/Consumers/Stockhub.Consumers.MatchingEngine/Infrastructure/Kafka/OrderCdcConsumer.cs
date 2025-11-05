@@ -1,5 +1,4 @@
 ﻿using Confluent.Kafka;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Stockhub.Common.Messaging.Consumers.Configuration;
 using Stockhub.Common.Messaging.Consumers.Debezium;
@@ -12,19 +11,24 @@ using Stockhub.Consumers.MatchingEngine.Infrastructure.Kafka.Mappers;
 namespace Stockhub.Consumers.MatchingEngine.Infrastructure.Kafka;
 
 internal sealed class OrderCdcConsumer(
-    IServiceProvider serviceProvider,
+    IMatchingEngineService matchingEngine,
+    OrderPlacedMapper mapper,
     ILogger<OrderCdcConsumer> logger,
     KafkaSettings kafkaSettings
 ) : KafkaConsumerBackgroundService<DebeziumEnvelope<OrderEventPayload>>(
-        serviceProvider,
         logger,
         kafkaSettings.Consumers["OrderPlaced"].Topic,
         BuildConsumerConfig(kafkaSettings.Consumers["OrderPlaced"], kafkaSettings.BootstrapServers)
     )
 {
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        await matchingEngine.StartAsync(stoppingToken);
+        await base.ExecuteAsync(stoppingToken);
+    }
+
     protected override async Task HandleMessageAsync(
         DebeziumEnvelope<OrderEventPayload> envelope,
-        IServiceProvider scope,
         CancellationToken cancellationToken)
     {
         if (envelope.Payload is null)
@@ -37,10 +41,8 @@ internal sealed class OrderCdcConsumer(
         switch (payload.Op)
         {
             case "c":
-                OrderPlacedMapper mapper = scope.GetRequiredService<OrderPlacedMapper>();
-                IMatchingEngineService matchingEngine = scope.GetRequiredService<IMatchingEngineService>();
-
                 Order? placedEvent = mapper.Map(payload);
+
                 if (placedEvent is not null)
                 {
                     await matchingEngine.ProcessAsync(placedEvent, cancellationToken);

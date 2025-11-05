@@ -1,6 +1,6 @@
 ﻿using Stockhub.Consumers.MatchingEngine.Domain.Entities;
 
-namespace Stockhub.Consumers.MatchingEngine.Infrastructure.Database;
+namespace Stockhub.Consumers.MatchingEngine.Infrastructure.Database.Interfaces;
 
 internal interface IOrderRepository
 {

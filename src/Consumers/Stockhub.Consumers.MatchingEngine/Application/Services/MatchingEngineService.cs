@@ -4,7 +4,7 @@ using Stockhub.Common.Domain.Results;
 using Stockhub.Consumers.MatchingEngine.Application.Validators;
 using Stockhub.Consumers.MatchingEngine.Domain.Entities;
 using Stockhub.Consumers.MatchingEngine.Domain.ValueObjects;
-using Stockhub.Consumers.MatchingEngine.Infrastructure.Database;
+using Stockhub.Consumers.MatchingEngine.Infrastructure.Database.Interfaces;
 
 namespace Stockhub.Consumers.MatchingEngine.Application.Services;
 

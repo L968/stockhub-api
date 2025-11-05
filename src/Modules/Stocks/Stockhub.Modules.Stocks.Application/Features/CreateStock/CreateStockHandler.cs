@@ -19,8 +19,19 @@ internal sealed class CreateStockHandler(
         }
 
         Stock stock = new(request.Symbol, request.Name, request.Sector);
+        var snapshot = new StockSnapshot(
+            stock.Id,
+            lastPrice: 0,
+            changePercent: 0,
+            minPrice: 0,
+            maxPrice: 0,
+            volume: 0,
+            createdAtUtc: DateTime.UtcNow,
+            updatedAtUtc: DateTime.UtcNow
+        );
 
         await dbContext.Stocks.AddAsync(stock, cancellationToken);
+        await dbContext.StockSnapshots.AddAsync(snapshot, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         logger.LogDebug("Created new stock {@Stock}", stock);

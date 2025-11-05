@@ -1,6 +1,7 @@
 ﻿using System.Data;
 using Dapper;
 using Stockhub.Consumers.MatchingEngine.Domain.Entities;
+using Stockhub.Consumers.MatchingEngine.Infrastructure.Database.Interfaces;
 
 namespace Stockhub.Consumers.MatchingEngine.Infrastructure.Database;
 
@@ -17,10 +18,11 @@ internal sealed class OrderRepository(IDbConnection connection) : IOrderReposito
                    quantity AS Quantity,
                    filled_quantity AS FilledQuantity,
                    is_cancelled AS IsCancelled,
-                   created_at_utc AS CreatedAtUtc,
-                   updated_at_utc AS UpdatedAtUtc
+                   created_at AS CreatedAtUtc,
+                   updated_at AS UpdatedAtUtc
             FROM {Schemas.Orders}.order
-            WHERE status IN (0, 1)
+            WHERE is_cancelled = FALSE
+            AND filled_quantity < quantity
         ";
 
         return await connection.QueryAsync<Order>(new CommandDefinition(sql, cancellationToken: cancellationToken));
@@ -37,8 +39,8 @@ internal sealed class OrderRepository(IDbConnection connection) : IOrderReposito
                    quantity AS Quantity,
                    filled_quantity AS FilledQuantity,
                    is_cancelled AS IsCancelled,
-                   created_at_utc AS CreatedAtUtc,
-                   updated_at_utc AS UpdatedAtUtc
+                   created_at AS CreatedAtUtc,
+                   updated_at AS UpdatedAtUtc
             FROM orders.order
             WHERE id = @Id
         ";
@@ -52,7 +54,7 @@ internal sealed class OrderRepository(IDbConnection connection) : IOrderReposito
         const string sql = @$"
             UPDATE {Schemas.Orders}.order
             SET filled_quantity = @FilledQuantity,
-                updated_at_utc = NOW() AT TIME ZONE 'UTC'
+                updated_at = NOW() AT TIME ZONE 'UTC'
             WHERE id = @Id
             ";
 
@@ -65,7 +67,7 @@ internal sealed class OrderRepository(IDbConnection connection) : IOrderReposito
         const string sql = @$"
             UPDATE {Schemas.Orders}.order
             SET is_cancelled = TRUE,
-                updated_at_utc = NOW() AT TIME ZONE 'UTC'
+                updated_at = NOW() AT TIME ZONE 'UTC'
             WHERE id = @Id
             """;
 

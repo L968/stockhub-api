@@ -44,19 +44,11 @@ namespace Stockhub.Modules.Stocks.Infrastructure.Database.Migrations
                     max_price = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
                     volume = table.Column<long>(type: "bigint", nullable: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    StockId1 = table.Column<Guid>(type: "uuid", nullable: false)
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_stock_snapshot", x => x.stock_id);
-                    table.ForeignKey(
-                        name: "FK_stock_snapshot_stock_StockId1",
-                        column: x => x.StockId1,
-                        principalSchema: "stocks",
-                        principalTable: "stock",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_stock_snapshot_stock_stock_id",
                         column: x => x.stock_id,
@@ -67,10 +59,11 @@ namespace Stockhub.Modules.Stocks.Infrastructure.Database.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_stock_snapshot_StockId1",
+                name: "IX_stock_symbol",
                 schema: "stocks",
-                table: "stock_snapshot",
-                column: "StockId1");
+                table: "stock",
+                column: "symbol",
+                unique: true);
         }
 
         /// <inheritdoc />

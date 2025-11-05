@@ -10,6 +10,7 @@ using Stockhub.Common.Messaging.Consumers.Configuration;
 using Stockhub.Consumers.MatchingEngine.Application.Services;
 using Stockhub.Consumers.MatchingEngine.Application.Validators;
 using Stockhub.Consumers.MatchingEngine.Infrastructure.Database;
+using Stockhub.Consumers.MatchingEngine.Infrastructure.Database.Interfaces;
 using Stockhub.Consumers.MatchingEngine.Infrastructure.Kafka;
 using Stockhub.Consumers.MatchingEngine.Infrastructure.Kafka.Mappers;
 

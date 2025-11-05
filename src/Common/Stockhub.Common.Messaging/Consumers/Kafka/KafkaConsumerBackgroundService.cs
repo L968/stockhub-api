@@ -1,13 +1,11 @@
 ﻿using System.Text.Json;
 using Confluent.Kafka;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Stockhub.Common.Messaging.Consumers.Kafka;
 
 public abstract class KafkaConsumerBackgroundService<TMessage>(
-    IServiceProvider serviceProvider,
     ILogger logger,
     string topic,
     ConsumerConfig config
@@ -18,7 +16,7 @@ public abstract class KafkaConsumerBackgroundService<TMessage>(
         PropertyNameCaseInsensitive = true
     };
 
-    protected abstract Task HandleMessageAsync(TMessage message, IServiceProvider scope, CancellationToken cancellationToken);
+    protected abstract Task HandleMessageAsync(TMessage message, CancellationToken cancellationToken);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -44,8 +42,7 @@ public abstract class KafkaConsumerBackgroundService<TMessage>(
                     continue;
                 }
 
-                using IServiceScope scope = serviceProvider.CreateScope();
-                await HandleMessageAsync(message, scope.ServiceProvider, stoppingToken);
+                await HandleMessageAsync(message, stoppingToken);
                 consumer.Commit(result);
             }
             catch (ConsumeException ex)

@@ -2,7 +2,7 @@
 using Stockhub.Consumers.MatchingEngine.Application.Validators;
 using Stockhub.Consumers.MatchingEngine.Domain.Entities;
 using Stockhub.Consumers.MatchingEngine.Domain.Enums;
-using Stockhub.Consumers.MatchingEngine.Infrastructure.Database;
+using Stockhub.Consumers.MatchingEngine.Infrastructure.Database.Interfaces;
 
 namespace Stockhub.Consumers.MatchingEngine.UnitTests;
 

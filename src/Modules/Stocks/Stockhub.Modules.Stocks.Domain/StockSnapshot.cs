@@ -14,4 +14,26 @@ public sealed class StockSnapshot : IAuditableEntity
     public DateTime UpdatedAtUtc { get; set; }
 
     public Stock Stock { get; private set; }
+
+    private StockSnapshot() { }
+
+    public StockSnapshot(
+        Guid stockId,
+        decimal lastPrice,
+        decimal changePercent,
+        decimal minPrice,
+        decimal maxPrice,
+        long volume,
+        DateTime createdAtUtc,
+        DateTime updatedAtUtc)
+    {
+        StockId = stockId;
+        LastPrice = lastPrice;
+        ChangePercent = changePercent;
+        MinPrice = minPrice;
+        MaxPrice = maxPrice;
+        Volume = volume;
+        CreatedAtUtc = createdAtUtc;
+        UpdatedAtUtc = updatedAtUtc;
+    }
 }

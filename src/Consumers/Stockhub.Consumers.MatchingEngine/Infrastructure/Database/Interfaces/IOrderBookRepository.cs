@@ -1,7 +1,7 @@
 ﻿using Stockhub.Consumers.MatchingEngine.Domain.Entities;
 using Stockhub.Consumers.MatchingEngine.Domain.ValueObjects;
 
-namespace Stockhub.Consumers.MatchingEngine.Infrastructure.Database;
+namespace Stockhub.Consumers.MatchingEngine.Infrastructure.Database.Interfaces;
 
 internal interface IOrderBookRepository
 {

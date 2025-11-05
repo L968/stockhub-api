@@ -91,9 +91,6 @@ namespace Stockhub.Modules.Stocks.Infrastructure.Database.Migrations
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("min_price");
 
-                    b.Property<Guid>("StockId1")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
@@ -104,22 +101,14 @@ namespace Stockhub.Modules.Stocks.Infrastructure.Database.Migrations
 
                     b.HasKey("StockId");
 
-                    b.HasIndex("StockId1");
-
                     b.ToTable("stock_snapshot", "stocks");
                 });
 
             modelBuilder.Entity("Stockhub.Modules.Stocks.Domain.StockSnapshot", b =>
                 {
-                    b.HasOne("Stockhub.Modules.Stocks.Domain.Stock", null)
+                    b.HasOne("Stockhub.Modules.Stocks.Domain.Stock", "Stock")
                         .WithOne("Snapshot")
                         .HasForeignKey("Stockhub.Modules.Stocks.Domain.StockSnapshot", "StockId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Stockhub.Modules.Stocks.Domain.Stock", "Stock")
-                        .WithMany()
-                        .HasForeignKey("StockId1")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

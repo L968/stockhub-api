@@ -21,8 +21,10 @@ internal sealed class StockSnapshotConfiguration : IEntityTypeConfiguration<Stoc
         builder.Property(s => s.CreatedAtUtc).HasColumnName("created_at");
         builder.Property(s => s.UpdatedAtUtc).HasColumnName("updated_at");
 
-        builder.HasOne<Stock>()
+        builder.HasOne(s => s.Stock)
             .WithOne(s => s.Snapshot)
-            .HasForeignKey<StockSnapshot>(s => s.StockId);
+            .HasForeignKey<StockSnapshot>(s => s.StockId)
+            .HasPrincipalKey<Stock>(s => s.Id)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

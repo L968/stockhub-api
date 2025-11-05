@@ -5,6 +5,7 @@ using Stockhub.Consumers.MatchingEngine.Application.Validators;
 using Stockhub.Consumers.MatchingEngine.Domain.Entities;
 using Stockhub.Consumers.MatchingEngine.Domain.Enums;
 using Stockhub.Consumers.MatchingEngine.Infrastructure.Database;
+using Stockhub.Consumers.MatchingEngine.Infrastructure.Database.Interfaces;
 
 namespace Stockhub.Consumers.MatchingEngine.UnitTests;
 
@@ -87,7 +88,11 @@ public class MatchingEngineServiceTests
 
         _orderRepositoryMock
             .Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Guid id, CancellationToken _) => allOrders.First(o => o.Id == id));
+            .ReturnsAsync((Guid id, CancellationToken _) =>
+            {
+                Order original = allOrders.First(o => o.Id == id);
+                return CloneOrder(original);
+            });
 
         _userRepositoryMock
             .Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -161,8 +166,13 @@ public class MatchingEngineServiceTests
         _orderRepositoryMock.Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(allOrders);
 
-        _orderRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Guid id, CancellationToken _) => allOrders.First(o => o.Id == id));
+        _orderRepositoryMock
+            .Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid id, CancellationToken _) =>
+            {
+                Order original = allOrders.First(o => o.Id == id);
+                return CloneOrder(original);
+            });
 
         _userRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken _) => allUsers.First(u => u.Id == id));
@@ -209,8 +219,13 @@ public class MatchingEngineServiceTests
         _orderRepositoryMock.Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(allOrders);
 
-        _orderRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Guid id, CancellationToken _) => allOrders.First(o => o.Id == id));
+        _orderRepositoryMock
+            .Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid id, CancellationToken _) =>
+            {
+                Order original = allOrders.First(o => o.Id == id);
+                return CloneOrder(original);
+            });
 
         _userRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken _) => allUsers.First(u => u.Id == id));
@@ -255,8 +270,13 @@ public class MatchingEngineServiceTests
         _orderRepositoryMock.Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(allOrders);
 
-        _orderRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Guid id, CancellationToken _) => allOrders.First(o => o.Id == id));
+        _orderRepositoryMock
+            .Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid id, CancellationToken _) =>
+            {
+                Order original = allOrders.First(o => o.Id == id);
+                return CloneOrder(original);
+            });
 
         _userRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken _) => allUsers.First(u => u.Id == id));
@@ -299,8 +319,13 @@ public class MatchingEngineServiceTests
         _orderRepositoryMock.Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(allOrders);
 
-        _orderRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Guid id, CancellationToken _) => allOrders.First(o => o.Id == id));
+        _orderRepositoryMock
+            .Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid id, CancellationToken _) =>
+            {
+                Order original = allOrders.First(o => o.Id == id);
+                return CloneOrder(original);
+            });
 
         _userRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken _) => allUsers.First(u => u.Id == id));
@@ -377,8 +402,13 @@ public class MatchingEngineServiceTests
         _orderRepositoryMock.Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(allOrders);
 
-        _orderRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Guid id, CancellationToken _) => allOrders.First(o => o.Id == id));
+        _orderRepositoryMock
+            .Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid id, CancellationToken _) =>
+            {
+                Order original = allOrders.First(o => o.Id == id);
+                return CloneOrder(original);
+            });
 
         _userRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken _) => allUsers.FirstOrDefault(u => u.Id == id));
@@ -424,8 +454,13 @@ public class MatchingEngineServiceTests
         _orderRepositoryMock.Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(allOrders);
 
-        _orderRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Guid id, CancellationToken _) => allOrders.First(o => o.Id == id));
+        _orderRepositoryMock
+            .Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid id, CancellationToken _) =>
+            {
+                Order original = allOrders.First(o => o.Id == id);
+                return CloneOrder(original);
+            });
 
         _userRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken _) => allUsers.First(u => u.Id == id));
@@ -475,8 +510,13 @@ public class MatchingEngineServiceTests
         _orderRepositoryMock.Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(allOrders);
 
-        _orderRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Guid id, CancellationToken _) => allOrders.First(o => o.Id == id));
+        _orderRepositoryMock
+            .Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid id, CancellationToken _) =>
+            {
+                Order original = allOrders.First(o => o.Id == id);
+                return CloneOrder(original);
+            });
 
         _userRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken _) => allUsers.First(u => u.Id == id));
@@ -521,7 +561,11 @@ public class MatchingEngineServiceTests
 
         _orderRepositoryMock
             .Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Guid id, CancellationToken _) => allOrders.First(o => o.Id == id));
+            .ReturnsAsync((Guid id, CancellationToken _) =>
+            {
+                Order original = allOrders.First(o => o.Id == id);
+                return CloneOrder(original);
+            });
 
         _userRepositoryMock
             .Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -597,8 +641,13 @@ public class MatchingEngineServiceTests
         _orderRepositoryMock.Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(allOrders);
 
-        _orderRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Guid id, CancellationToken _) => allOrders.First(o => o.Id == id));
+        _orderRepositoryMock
+            .Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid id, CancellationToken _) =>
+            {
+                Order original = allOrders.First(o => o.Id == id);
+                return CloneOrder(original);
+            });
 
         _userRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken _) => allUsers.First(u => u.Id == id));
@@ -635,8 +684,13 @@ public class MatchingEngineServiceTests
         _orderRepositoryMock.Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(allOrders);
 
-        _orderRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Guid id, CancellationToken _) => allOrders.First(o => o.Id == id));
+        _orderRepositoryMock
+            .Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid id, CancellationToken _) =>
+            {
+                Order original = allOrders.First(o => o.Id == id);
+                return CloneOrder(original);
+            });
 
         _userRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken _) => allUsers.First(u => u.Id == id));
@@ -673,8 +727,13 @@ public class MatchingEngineServiceTests
         _orderRepositoryMock.Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(allOrders);
 
-        _orderRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Guid id, CancellationToken _) => allOrders.First(o => o.Id == id));
+        _orderRepositoryMock
+            .Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid id, CancellationToken _) =>
+            {
+                Order original = allOrders.First(o => o.Id == id);
+                return CloneOrder(original);
+            });
 
         _userRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken _) => allUsers.First(u => u.Id == id));
