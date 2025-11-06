@@ -10,69 +10,87 @@ internal sealed class OrderBook(Guid stockId, List<Order> orders)
 
     public List<TradeProposal> ProposeAllPossibleTrades()
     {
-        var proposals = new List<TradeProposal>();
+        List<(Order Order, int Remaining)> buyOrders = PrepareBuyOrders();
+        List<(Order Order, int Remaining)> sellOrders = PrepareSellOrders();
 
-        var buyOrders = orders
+        return GenerateTradeProposals(buyOrders, sellOrders);
+    }
+
+    private List<(Order Order, int Remaining)> PrepareBuyOrders()
+    {
+        return orders
             .Where(o => o.Side == OrderSide.Buy && !o.IsCancelled && o.FilledQuantity < o.Quantity)
             .OrderByDescending(o => o.Price)
             .ThenBy(o => o.CreatedAtUtc)
-            .Select(o => new { Order = o, Remaining = o.Quantity - o.FilledQuantity })
+            .Select(o => (o, o.Quantity - o.FilledQuantity))
             .ToList();
+    }
 
-        var sellOrders = orders
+    private List<(Order Order, int Remaining)> PrepareSellOrders()
+    {
+        return orders
             .Where(o => o.Side == OrderSide.Sell && !o.IsCancelled && o.FilledQuantity < o.Quantity)
             .OrderBy(o => o.Price)
             .ThenBy(o => o.CreatedAtUtc)
-            .Select(o => new { Order = o, Remaining = o.Quantity - o.FilledQuantity })
+            .Select(o => (o, o.Quantity - o.FilledQuantity))
             .ToList();
+    }
 
+    private List<TradeProposal> GenerateTradeProposals(
+        List<(Order Order, int Remaining)> buyOrders,
+        List<(Order Order, int Remaining)> sellOrders)
+    {
+        var proposals = new List<TradeProposal>();
         int i = 0, j = 0;
 
         while (i < buyOrders.Count && j < sellOrders.Count)
         {
-            var buyEntry = buyOrders[i];
-            var sellEntry = sellOrders[j];
+            (Order Order, int Remaining) buy = buyOrders[i];
+            (Order Order, int Remaining) sell = sellOrders[j];
 
-            if (buyEntry.Order.Price < sellEntry.Order.Price)
+            if (buy.Order.Price < sell.Order.Price)
             {
                 i++;
                 continue;
             }
 
-            int fillQuantity = Math.Min(buyEntry.Remaining, sellEntry.Remaining);
+            int fillQuantity = Math.Min(buy.Remaining, sell.Remaining);
 
-            var proposal = new TradeProposal(
-                stockId,
-                BuyOrderId: buyEntry.Order.Id,
-                SellOrderId: sellEntry.Order.Id,
-                Price: sellEntry.Order.Price,
-                Quantity: fillQuantity
-            );
+            proposals.Add(CreateProposal(buy.Order, sell.Order, fillQuantity));
 
-            proposals.Add(proposal);
+            buy.Remaining -= fillQuantity;
+            sell.Remaining -= fillQuantity;
 
-            buyEntry = new { buyEntry.Order, Remaining = buyEntry.Remaining - fillQuantity };
-            sellEntry = new { sellEntry.Order, Remaining = sellEntry.Remaining - fillQuantity };
-
-            if (buyEntry.Remaining == 0)
+            if (buy.Remaining == 0)
             {
                 i++;
             }
             else
             {
-                buyOrders[i] = buyEntry;
+                buyOrders[i] = buy;
             }
 
-            if (sellEntry.Remaining == 0)
+            if (sell.Remaining == 0)
             {
                 j++;
             }
             else
             {
-                sellOrders[j] = sellEntry;
+                sellOrders[j] = sell;
             }
         }
 
         return proposals;
+    }
+
+    private TradeProposal CreateProposal(Order buy, Order sell, int quantity)
+    {
+        return new TradeProposal(
+            stockId,
+            BuyOrderId: buy.Id,
+            SellOrderId: sell.Id,
+            Price: sell.Price,
+            Quantity: quantity
+        );
     }
 }

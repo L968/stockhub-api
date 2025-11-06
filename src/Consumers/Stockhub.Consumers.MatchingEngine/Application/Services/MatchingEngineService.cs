@@ -18,7 +18,7 @@ internal sealed class MatchingEngineService(
     ILogger<MatchingEngineService> logger
 ) : IMatchingEngineService
 {
-    public async Task StartAsync(CancellationToken cancellationToken)
+    public async Task InitializeAsync(CancellationToken cancellationToken)
     {
         IEnumerable<Order> openOrders = await orderRepository.GetAllOpenOrdersAsync(cancellationToken);
 
@@ -50,7 +50,7 @@ internal sealed class MatchingEngineService(
         dirtyQueue.Enqueue(incomingOrder.StockId);
     }
 
-    public async Task<List<Trade>> ProcessOrderBookAsync(Guid stockId, CancellationToken cancellationToken)
+    public async Task<List<Trade>> MatchPendingOrdersAsync(Guid stockId, CancellationToken cancellationToken)
     {
         OrderBook orderBook = orderBookRepository.GetOrderBookSnapshot(stockId);
 
@@ -76,7 +76,7 @@ internal sealed class MatchingEngineService(
 
             foreach (TradeProposal proposal in proposals)
             {
-                Result<Trade> result = await ExecuteTradeProposalAsync(proposal, cancellationToken);
+                Result<Trade> result = await TryExecuteTradeAsync(proposal, cancellationToken);
 
                 if (result.IsFailure)
                 {
@@ -106,7 +106,7 @@ internal sealed class MatchingEngineService(
             return Result.Success();
         }
 
-        ValidationError validationError = ToValidationError(validation);
+        ValidationError validationError = MapToValidationError(validation);
 
         logger.LogWarning(
             "Invalid order {OrderId} (User {UserId}, Stock {StockId}): {Errors}",
@@ -117,9 +117,9 @@ internal sealed class MatchingEngineService(
         return Result.Failure(validationError);
     }
 
-    private async Task<Result<Trade>> ExecuteTradeProposalAsync(TradeProposal proposal, CancellationToken cancellationToken)
+    private async Task<Result<Trade>> TryExecuteTradeAsync(TradeProposal proposal, CancellationToken cancellationToken)
     {
-        (Order buyOrder, Order sellOrder, User buyer, User seller) = await LoadOrdersAndUsersAsync(proposal, cancellationToken);
+        (Order buyOrder, Order sellOrder, User buyer, User seller) = await LoadEntitiesAsync(proposal, cancellationToken);
 
         Result buyValidation = await ValidateOrderAsync(buyOrder, cancellationToken);
         if (buyValidation.IsFailure)
@@ -137,7 +137,7 @@ internal sealed class MatchingEngineService(
 
         var trade = new Trade(proposal, buyer, seller);
 
-        await CommitTrade(trade, buyOrder, sellOrder, buyer, seller, cancellationToken);
+        await PersistExecutedTradeAsync(trade, buyOrder, sellOrder, buyer, seller, cancellationToken);
 
         logger.LogInformation(
             "Trade executed: {StockId} | Buy {BuyOrderId} ↔ Sell {SellOrderId} @ {Price} x {Quantity}",
@@ -147,7 +147,7 @@ internal sealed class MatchingEngineService(
         return trade;
     }
 
-    private async Task<(Order buyOrder, Order sellOrder, User buyer, User seller)> LoadOrdersAndUsersAsync(TradeProposal proposal, CancellationToken cancellationToken)
+    private async Task<(Order buyOrder, Order sellOrder, User buyer, User seller)> LoadEntitiesAsync(TradeProposal proposal, CancellationToken cancellationToken)
     {
         Order buyOrder = await orderRepository.GetAsync(proposal.BuyOrderId, cancellationToken) ?? throw new InvalidOperationException("Buy order not found");
         Order sellOrder = await orderRepository.GetAsync(proposal.SellOrderId, cancellationToken) ?? throw new InvalidOperationException("Sell order not found");
@@ -157,7 +157,7 @@ internal sealed class MatchingEngineService(
         return (buyOrder, sellOrder, buyer, seller);
     }
 
-    private async Task CommitTrade(
+    private async Task PersistExecutedTradeAsync(
         Trade trade,
         Order buyOrder,
         Order sellOrder,
@@ -187,7 +187,7 @@ internal sealed class MatchingEngineService(
         orderBookRepository.CancelOrder(order.Id);
     }
 
-    private static ValidationError ToValidationError(ValidationResult validation)
+    private static ValidationError MapToValidationError(ValidationResult validation)
     {
         Error[] errors = validation.Errors
             .Select(f => Error.Problem(f.ErrorCode ?? f.PropertyName, f.ErrorMessage))

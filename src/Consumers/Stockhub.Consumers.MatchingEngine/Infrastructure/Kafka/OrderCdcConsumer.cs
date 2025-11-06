@@ -23,7 +23,7 @@ internal sealed class OrderCdcConsumer(
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await matchingEngine.StartAsync(stoppingToken);
+        await matchingEngine.InitializeAsync(stoppingToken);
         await base.ExecuteAsync(stoppingToken);
     }
 

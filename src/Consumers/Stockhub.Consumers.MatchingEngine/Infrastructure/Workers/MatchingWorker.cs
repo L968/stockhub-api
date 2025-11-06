@@ -22,7 +22,7 @@ internal sealed class MatchingWorkerHostedService(
 
             try
             {
-                await matchingEngineService.ProcessOrderBookAsync(stockId, stoppingToken);
+                await matchingEngineService.MatchPendingOrdersAsync(stockId, stoppingToken);
                 logger.LogInformation("Processing stock {StockId}", stockId);
             }
             finally

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using Stockhub.Consumers.MatchingEngine.Domain.Entities;
+using Stockhub.Consumers.MatchingEngine.Domain.Enums;
 using Stockhub.Consumers.MatchingEngine.Domain.ValueObjects;
 using Stockhub.Consumers.MatchingEngine.Infrastructure.Database.Interfaces;
 
@@ -38,6 +39,11 @@ internal sealed class OrderBookRepository : IOrderBookRepository
         if (_orders.TryGetValue(orderId, out Order? order))
         {
             order.FilledQuantity = filledQuantity;
+
+            if (order.Status == OrderStatus.Filled)
+            {
+                RemoveOrder(orderId);
+            }
         }
     }
 
