@@ -8,60 +8,71 @@ internal sealed class OrderBook(Guid stockId, List<Order> orders)
     public int Count => orders.Count;
     public IReadOnlyList<Order> Orders => orders;
 
-    public List<TradeProposal> ProposeTrades(Order incomingOrder)
+    public List<TradeProposal> ProposeAllPossibleTrades()
     {
-        List<Order> orderMatches = incomingOrder.Side == OrderSide.Buy
-            ? FindMatchingSellOrders(incomingOrder)
-            : FindMatchingBuyOrders(incomingOrder);
-
         var proposals = new List<TradeProposal>();
-        int remainingQuantity = incomingOrder.Quantity - incomingOrder.FilledQuantity;
 
-        foreach (Order oppositeOrder in orderMatches)
+        var buyOrders = orders
+            .Where(o => o.Side == OrderSide.Buy && !o.IsCancelled && o.FilledQuantity < o.Quantity)
+            .OrderByDescending(o => o.Price)
+            .ThenBy(o => o.CreatedAtUtc)
+            .Select(o => new { Order = o, Remaining = o.Quantity - o.FilledQuantity })
+            .ToList();
+
+        var sellOrders = orders
+            .Where(o => o.Side == OrderSide.Sell && !o.IsCancelled && o.FilledQuantity < o.Quantity)
+            .OrderBy(o => o.Price)
+            .ThenBy(o => o.CreatedAtUtc)
+            .Select(o => new { Order = o, Remaining = o.Quantity - o.FilledQuantity })
+            .ToList();
+
+        int i = 0, j = 0;
+
+        while (i < buyOrders.Count && j < sellOrders.Count)
         {
-            if (remainingQuantity <= 0)
+            var buyEntry = buyOrders[i];
+            var sellEntry = sellOrders[j];
+
+            if (buyEntry.Order.Price < sellEntry.Order.Price)
             {
-                break;
+                i++;
+                continue;
             }
 
-            int fillQuantity = Math.Min(remainingQuantity, oppositeOrder.Quantity - oppositeOrder.FilledQuantity);
+            int fillQuantity = Math.Min(buyEntry.Remaining, sellEntry.Remaining);
 
             var proposal = new TradeProposal(
                 stockId,
-                BuyOrderId: incomingOrder.Side == OrderSide.Buy ? incomingOrder.Id : oppositeOrder.Id,
-                SellOrderId: incomingOrder.Side == OrderSide.Sell ? incomingOrder.Id : oppositeOrder.Id,
-                Price: incomingOrder.Side == OrderSide.Buy ? oppositeOrder.Price : incomingOrder.Price,
+                BuyOrderId: buyEntry.Order.Id,
+                SellOrderId: sellEntry.Order.Id,
+                Price: sellEntry.Order.Price,
                 Quantity: fillQuantity
             );
 
             proposals.Add(proposal);
-            remainingQuantity -= fillQuantity;
+
+            buyEntry = new { buyEntry.Order, Remaining = buyEntry.Remaining - fillQuantity };
+            sellEntry = new { sellEntry.Order, Remaining = sellEntry.Remaining - fillQuantity };
+
+            if (buyEntry.Remaining == 0)
+            {
+                i++;
+            }
+            else
+            {
+                buyOrders[i] = buyEntry;
+            }
+
+            if (sellEntry.Remaining == 0)
+            {
+                j++;
+            }
+            else
+            {
+                sellOrders[j] = sellEntry;
+            }
         }
 
         return proposals;
-    }
-
-    private List<Order> FindMatchingBuyOrders(Order sellOrder)
-    {
-        return orders
-            .Where(o => o.Side == OrderSide.Buy
-                        && !o.IsCancelled
-                        && o.Price >= sellOrder.Price
-                        && o.FilledQuantity < o.Quantity)
-            .OrderByDescending(o => o.Price)
-            .ThenBy(o => o.CreatedAtUtc)
-            .ToList();
-    }
-
-    private List<Order> FindMatchingSellOrders(Order buyOrder)
-    {
-        return orders
-            .Where(o => o.Side == OrderSide.Sell
-                        && !o.IsCancelled
-                        && o.Price <= buyOrder.Price
-                        && o.FilledQuantity < o.Quantity)
-            .OrderBy(o => o.Price)
-            .ThenBy(o => o.CreatedAtUtc)
-            .ToList();
     }
 }

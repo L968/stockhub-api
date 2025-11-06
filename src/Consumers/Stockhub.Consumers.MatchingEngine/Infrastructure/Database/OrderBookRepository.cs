@@ -46,6 +46,11 @@ internal sealed class OrderBookRepository : IOrderBookRepository
         _orders.TryRemove(orderId, out _);
     }
 
+    public bool ContainsOrder(Guid orderId)
+    {
+        return _orders.ContainsKey(orderId);
+    }
+
     public OrderBook GetOrderBookSnapshot(Guid stockId)
     {
         var stockOrders = _orders.Values

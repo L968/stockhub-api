@@ -11,6 +11,7 @@ internal interface IOrderBookRepository
     void CancelOrder(Guid orderId);
     void UpdateOrderFilledQuantity(Guid orderId, int filledQuantity);
     void RemoveOrder(Guid orderId);
+    bool ContainsOrder(Guid orderId);
 
     OrderBook GetOrderBookSnapshot(Guid stockId);
 }

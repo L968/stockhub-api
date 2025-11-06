@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using Moq;
+using Stockhub.Consumers.MatchingEngine.Application.Queues;
 using Stockhub.Consumers.MatchingEngine.Application.Services;
 using Stockhub.Consumers.MatchingEngine.Application.Validators;
 using Stockhub.Consumers.MatchingEngine.Domain.Entities;
@@ -13,6 +14,7 @@ public class MatchingEngineServiceTests
 {
     private readonly Mock<IOrderRepository> _orderRepositoryMock;
     private readonly Mock<IUserRepository> _userRepositoryMock;
+    private readonly Mock<IDirtyQueue> _dirtyQueueMock;
     private readonly Mock<ILogger<MatchingEngineService>> _loggerMock;
     private readonly MatchingEngineService _service;
 
@@ -20,6 +22,7 @@ public class MatchingEngineServiceTests
     {
         _orderRepositoryMock = new Mock<IOrderRepository>();
         _userRepositoryMock = new Mock<IUserRepository>();
+        _dirtyQueueMock = new Mock<IDirtyQueue>();
         _loggerMock = new Mock<ILogger<MatchingEngineService>>();
 
         _orderRepositoryMock
@@ -38,31 +41,28 @@ public class MatchingEngineServiceTests
             new OrderBookRepository(),
             _orderRepositoryMock.Object,
             _userRepositoryMock.Object,
+            _dirtyQueueMock.Object,
             new OrderValidator(_userRepositoryMock.Object),
             _loggerMock.Object
         );
     }
 
     [Fact]
-    public async Task ProcessAsync_Should_Add_Order_And_Remove_OrderBook_When_Empty()
+    public async Task ProcessOrderBookAsync_Should_Return_Empty_When_OrderBook_Has_No_Trades()
     {
         // Arrange
         var stockId = Guid.NewGuid();
-        Order order = CreateOrder(stockId: stockId, side: OrderSide.Sell);
-
-        _orderRepositoryMock
-            .Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync([]);
 
         // Act
-        List<Trade> trades = await _service.ProcessAsync(order, CancellationToken.None);
+        List<Trade> trades = await _service.ProcessOrderBookAsync(stockId, CancellationToken.None);
 
         // Assert
         Assert.Empty(trades);
+        _dirtyQueueMock.Verify(x => x.MarkProcessed(stockId), Times.Once);
     }
 
     [Fact]
-    public async Task ProcessAsync_Should_Cancel_Buyer_Without_Balance_And_Continue_With_Next_Orders()
+    public async Task ProcessOrderBookAsync_Should_Cancel_Buyer_Without_Balance_And_Continue_With_Next_Orders()
     {
         // Arrange
         var stockId = Guid.NewGuid();
@@ -109,25 +109,19 @@ public class MatchingEngineServiceTests
         await _service.StartAsync(CancellationToken.None);
 
         // Act
-        List<Trade> executedTrades = await _service.ProcessAsync(sell1, CancellationToken.None);
+        List<Trade> trades = await _service.ProcessOrderBookAsync(stockId, CancellationToken.None);
 
         // Assert
-        _orderRepositoryMock.Verify(
-            x => x.CancelAsync(buy3.Id, It.IsAny<CancellationToken>()),
-            Times.Once
-        );
+        _orderRepositoryMock.Verify(x => x.CancelAsync(buy3.Id, It.IsAny<CancellationToken>()), Times.Once);
+        Assert.DoesNotContain(trades, t => t.BuyOrderId == buy3.Id);
+        Assert.Equal(2, trades.Count);
 
-        Assert.DoesNotContain(executedTrades, t => t.BuyOrderId == buy3.Id);
-        Assert.Equal(2, executedTrades.Count);
-
-        Assert.Collection(executedTrades,
+        Assert.Collection(trades,
             t =>
             {
                 Assert.Equal(stockId, t.StockId);
                 Assert.Equal(buy4.UserId, t.BuyerId);
                 Assert.Equal(sell1.UserId, t.SellerId);
-                Assert.Equal(buy4.Id, t.BuyOrderId);
-                Assert.Equal(sell1.Id, t.SellOrderId);
                 Assert.Equal(100, t.Price);
                 Assert.Equal(5, t.Quantity);
             },
@@ -136,16 +130,13 @@ public class MatchingEngineServiceTests
                 Assert.Equal(stockId, t.StockId);
                 Assert.Equal(buy2.UserId, t.BuyerId);
                 Assert.Equal(sell1.UserId, t.SellerId);
-                Assert.Equal(buy2.Id, t.BuyOrderId);
-                Assert.Equal(sell1.Id, t.SellOrderId);
                 Assert.Equal(100, t.Price);
                 Assert.Equal(5, t.Quantity);
-            }
-        );
+            });
     }
 
     [Fact]
-    public async Task ProcessAsync_Should_Cancel_BuyOrder_If_Buyer_Has_Insufficient_Balance_And_Not_Execute_Any_Trade()
+    public async Task ProcessOrderBookAsync_Should_Cancel_BuyOrder_If_Buyer_Has_Insufficient_Balance_And_Not_Execute_Any_Trade()
     {
         // Arrange
         var stockId = Guid.NewGuid();
@@ -160,47 +151,52 @@ public class MatchingEngineServiceTests
         var seller2 = new User { Id = sell2.UserId, CurrentBalance = 0 };
         var seller3 = new User { Id = sell3.UserId, CurrentBalance = 0 };
 
-        Order[] allOrders = [buyIncoming, sell1, sell2, sell3];
+        Order[] allOrders = [sell1, sell2, sell3];
         User[] allUsers = [buyer, seller1, seller2, seller3];
 
-        _orderRepositoryMock.Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
+        _orderRepositoryMock
+            .Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(allOrders);
 
         _orderRepositoryMock
             .Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken _) =>
             {
-                Order original = allOrders.First(o => o.Id == id);
+                Order original = allOrders.Concat([buyIncoming]).First(o => o.Id == id);
                 return CloneOrder(original);
             });
 
-        _userRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        _userRepositoryMock
+            .Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken _) => allUsers.First(u => u.Id == id));
 
-        _userRepositoryMock.Setup(x => x.HasSufficientBalanceAsync(It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Guid userId, decimal amount, CancellationToken _) => allUsers.First(u => u.Id == userId).CurrentBalance >= amount);
+        _userRepositoryMock
+            .Setup(x => x.HasSufficientBalanceAsync(It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid userId, decimal amount, CancellationToken _) =>
+            {
+                User user = allUsers.First(u => u.Id == userId);
+                return user.CurrentBalance >= amount;
+            });
 
         await _service.StartAsync(CancellationToken.None);
+        await _service.EnqueueOrderAsync(buyIncoming, CancellationToken.None);
 
         // Act
-        List<Trade> executedTrades = await _service.ProcessAsync(buyIncoming, CancellationToken.None);
+        List<Trade> trades = await _service.ProcessOrderBookAsync(stockId, CancellationToken.None);
 
         // Assert
         _orderRepositoryMock.Verify(x => x.CancelAsync(buyIncoming.Id, It.IsAny<CancellationToken>()), Times.Once);
-
-        Assert.Empty(executedTrades);
-
+        Assert.Empty(trades);
         Assert.Equal(500, buyer.CurrentBalance);
         Assert.Equal(0, buyIncoming.FilledQuantity);
         Assert.Equal(0, sell1.FilledQuantity);
         Assert.Equal(0, sell2.FilledQuantity);
         Assert.Equal(0, sell3.FilledQuantity);
-
         _loggerMock.VerifyLog(LogLevel.Warning, "Invalid order", Times.AtLeast(1));
     }
 
     [Fact]
-    public async Task ProcessAsync_Should_Cancel_BuyOrder_When_Buyer_Has_Insufficient_Balance_And_Incoming_Is_Sell()
+    public async Task ProcessOrderBookAsync_Should_Cancel_BuyOrder_When_Buyer_Has_Insufficient_Balance_And_Incoming_Is_Sell()
     {
         // Arrange
         var stockId = Guid.NewGuid();
@@ -216,7 +212,8 @@ public class MatchingEngineServiceTests
         Order[] allOrders = [buyOrder, sellOrder];
         User[] allUsers = [buyer, seller];
 
-        _orderRepositoryMock.Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
+        _orderRepositoryMock
+            .Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(allOrders);
 
         _orderRepositoryMock
@@ -227,16 +224,19 @@ public class MatchingEngineServiceTests
                 return CloneOrder(original);
             });
 
-        _userRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        _userRepositoryMock
+            .Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken _) => allUsers.First(u => u.Id == id));
 
-        _userRepositoryMock.Setup(x => x.HasSufficientBalanceAsync(It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Guid userId, decimal amount, CancellationToken _) => allUsers.First(u => u.Id == userId).CurrentBalance >= amount);
+        _userRepositoryMock
+            .Setup(x => x.HasSufficientBalanceAsync(It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid userId, decimal amount, CancellationToken _) =>
+                allUsers.First(u => u.Id == userId).CurrentBalance >= amount);
 
         await _service.StartAsync(CancellationToken.None);
 
         // Act
-        List<Trade> executedTrades = await _service.ProcessAsync(sellOrder, CancellationToken.None);
+        List<Trade> executedTrades = await _service.ProcessOrderBookAsync(stockId, CancellationToken.None);
 
         // Assert
         _loggerMock.VerifyLog(LogLevel.Warning, "Invalid order", Times.AtLeast(1));
@@ -251,7 +251,7 @@ public class MatchingEngineServiceTests
     }
 
     [Fact]
-    public async Task ProcessAsync_Should_Cancel_Order_When_Buyer_Has_Insufficient_Balance()
+    public async Task ProcessOrderBookAsync_Should_Cancel_Order_When_Buyer_Has_Insufficient_Balance()
     {
         // Arrange
         var stockId = Guid.NewGuid();
@@ -267,7 +267,8 @@ public class MatchingEngineServiceTests
         Order[] allOrders = [buyOrder, sellOrder];
         User[] allUsers = [buyer, seller];
 
-        _orderRepositoryMock.Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
+        _orderRepositoryMock
+            .Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(allOrders);
 
         _orderRepositoryMock
@@ -278,16 +279,19 @@ public class MatchingEngineServiceTests
                 return CloneOrder(original);
             });
 
-        _userRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        _userRepositoryMock
+            .Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken _) => allUsers.First(u => u.Id == id));
 
-        _userRepositoryMock.Setup(x => x.HasSufficientBalanceAsync(It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Guid userId, decimal amount, CancellationToken _) => allUsers.First(u => u.Id == userId).CurrentBalance >= amount);
+        _userRepositoryMock
+            .Setup(x => x.HasSufficientBalanceAsync(It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid userId, decimal amount, CancellationToken _) =>
+                allUsers.First(u => u.Id == userId).CurrentBalance >= amount);
 
         await _service.StartAsync(CancellationToken.None);
 
         // Act
-        List<Trade> executedTrades = await _service.ProcessAsync(buyOrder, CancellationToken.None);
+        List<Trade> executedTrades = await _service.ProcessOrderBookAsync(stockId, CancellationToken.None);
 
         // Assert
         _loggerMock.VerifyLog(LogLevel.Warning, "Invalid order", Times.AtLeast(1));
@@ -300,7 +304,7 @@ public class MatchingEngineServiceTests
     }
 
     [Fact]
-    public async Task ProcessAsync_Should_Execute_Trade_When_Buyer_Has_Sufficient_Balance()
+    public async Task ProcessOrderBookAsync_Should_Execute_Trade_When_Buyer_Has_Sufficient_Balance()
     {
         // Arrange
         var stockId = Guid.NewGuid();
@@ -316,7 +320,8 @@ public class MatchingEngineServiceTests
         Order[] allOrders = [buyOrder, sellOrder];
         User[] allUsers = [buyer, seller];
 
-        _orderRepositoryMock.Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
+        _orderRepositoryMock
+            .Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(allOrders);
 
         _orderRepositoryMock
@@ -327,16 +332,18 @@ public class MatchingEngineServiceTests
                 return CloneOrder(original);
             });
 
-        _userRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        _userRepositoryMock
+            .Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken _) => allUsers.First(u => u.Id == id));
 
-        _userRepositoryMock.Setup(x => x.HasSufficientBalanceAsync(It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
+        _userRepositoryMock
+            .Setup(x => x.HasSufficientBalanceAsync(It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
         await _service.StartAsync(CancellationToken.None);
 
         // Act
-        List<Trade> executedTrades = await _service.ProcessAsync(buyOrder, CancellationToken.None);
+        List<Trade> executedTrades = await _service.ProcessOrderBookAsync(stockId, CancellationToken.None);
 
         // Assert
         Assert.Single(executedTrades);
@@ -357,7 +364,7 @@ public class MatchingEngineServiceTests
     }
 
     [Fact]
-    public async Task ProcessAsync_Should_Handle_Cancelled_Orders_Correctly()
+    public async Task ProcessOrderBookAsync_Should_Handle_Cancelled_Orders_Correctly()
     {
         // Arrange
         var stockId = Guid.NewGuid();
@@ -365,24 +372,26 @@ public class MatchingEngineServiceTests
 
         Order[] allOrders = [cancelledOrder];
 
-        _orderRepositoryMock.Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
+        _orderRepositoryMock
+            .Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(allOrders);
 
-        _orderRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        _orderRepositoryMock
+            .Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(cancelledOrder);
 
         await _service.StartAsync(CancellationToken.None);
 
         // Act
         Exception exception = await Record.ExceptionAsync(() =>
-            _service.ProcessAsync(cancelledOrder, CancellationToken.None));
+            _service.ProcessOrderBookAsync(stockId, CancellationToken.None));
 
         // Assert
         Assert.Null(exception);
     }
 
     [Fact]
-    public async Task ProcessAsync_Should_Handle_Multiple_Stocks_Independently()
+    public async Task ProcessOrderBookAsync_Should_Handle_Multiple_Stocks_Independently()
     {
         // Arrange
         var stockId1 = Guid.NewGuid();
@@ -393,13 +402,13 @@ public class MatchingEngineServiceTests
 
         Order buyOrder1 = CreateOrder(userId: buyer1.Id, stockId: stockId1, side: OrderSide.Buy, price: 100, quantity: 10);
         Order sellOrder1 = CreateOrder(userId: seller1.Id, stockId: stockId1, side: OrderSide.Sell, price: 100, quantity: 10);
-
         Order buyOrder2 = CreateOrder(stockId: stockId2, side: OrderSide.Buy, price: 100, quantity: 10);
 
         Order[] allOrders = [buyOrder1, sellOrder1, buyOrder2];
         User[] allUsers = [buyer1, seller1];
 
-        _orderRepositoryMock.Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
+        _orderRepositoryMock
+            .Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(allOrders);
 
         _orderRepositoryMock
@@ -410,16 +419,18 @@ public class MatchingEngineServiceTests
                 return CloneOrder(original);
             });
 
-        _userRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        _userRepositoryMock
+            .Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken _) => allUsers.FirstOrDefault(u => u.Id == id));
 
-        _userRepositoryMock.Setup(x => x.HasSufficientBalanceAsync(It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
+        _userRepositoryMock
+            .Setup(x => x.HasSufficientBalanceAsync(It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
         await _service.StartAsync(CancellationToken.None);
 
         // Act
-        List<Trade> executedTrades = await _service.ProcessAsync(buyOrder1, CancellationToken.None);
+        List<Trade> executedTrades = await _service.ProcessOrderBookAsync(stockId1, CancellationToken.None);
 
         // Assert
         Assert.Single(executedTrades);
@@ -435,7 +446,7 @@ public class MatchingEngineServiceTests
     }
 
     [Fact]
-    public async Task ProcessAsync_Should_Handle_Partial_Fills_Correctly()
+    public async Task ProcessOrderBookAsync_Should_Handle_Partial_Fills_Correctly()
     {
         // Arrange
         var stockId = Guid.NewGuid();
@@ -451,7 +462,8 @@ public class MatchingEngineServiceTests
         Order[] allOrders = [buyOrder, sellOrder];
         User[] allUsers = [buyer, seller];
 
-        _orderRepositoryMock.Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
+        _orderRepositoryMock
+            .Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(allOrders);
 
         _orderRepositoryMock
@@ -462,16 +474,18 @@ public class MatchingEngineServiceTests
                 return CloneOrder(original);
             });
 
-        _userRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        _userRepositoryMock
+            .Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken _) => allUsers.First(u => u.Id == id));
 
-        _userRepositoryMock.Setup(x => x.HasSufficientBalanceAsync(It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
+        _userRepositoryMock
+            .Setup(x => x.HasSufficientBalanceAsync(It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
         await _service.StartAsync(CancellationToken.None);
 
         // Act
-        List<Trade> executedTrades = await _service.ProcessAsync(buyOrder, CancellationToken.None);
+        List<Trade> executedTrades = await _service.ProcessOrderBookAsync(stockId, CancellationToken.None);
 
         // Assert
         Assert.Single(executedTrades);
@@ -491,7 +505,7 @@ public class MatchingEngineServiceTests
     }
 
     [Fact]
-    public async Task ProcessAsync_Should_Log_Trade_Execution()
+    public async Task ProcessOrderBookAsync_Should_Log_Trade_Execution()
     {
         // Arrange
         var stockId = Guid.NewGuid();
@@ -507,7 +521,8 @@ public class MatchingEngineServiceTests
         Order[] allOrders = [buyOrder, sellOrder];
         User[] allUsers = [buyer, seller];
 
-        _orderRepositoryMock.Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
+        _orderRepositoryMock
+            .Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(allOrders);
 
         _orderRepositoryMock
@@ -518,16 +533,18 @@ public class MatchingEngineServiceTests
                 return CloneOrder(original);
             });
 
-        _userRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        _userRepositoryMock
+            .Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken _) => allUsers.First(u => u.Id == id));
 
-        _userRepositoryMock.Setup(x => x.HasSufficientBalanceAsync(It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
+        _userRepositoryMock
+            .Setup(x => x.HasSufficientBalanceAsync(It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
         await _service.StartAsync(CancellationToken.None);
 
         // Act
-        List<Trade> executedTrades = await _service.ProcessAsync(buyOrder, CancellationToken.None);
+        List<Trade> executedTrades = await _service.ProcessOrderBookAsync(stockId, CancellationToken.None);
 
         // Assert
         _loggerMock.VerifyLog(LogLevel.Information, "Trade executed", Times.AtLeast(1));
@@ -535,7 +552,7 @@ public class MatchingEngineServiceTests
     }
 
     [Fact]
-    public async Task ProcessAsync_Should_Not_Execute_Trade_If_Order_Is_Cancelled_In_Repository()
+    public async Task ProcessOrderBookAsync_Should_Not_Execute_Trade_If_Order_Is_Cancelled_In_Repository()
     {
         // Arrange
         var stockId = Guid.NewGuid();
@@ -586,14 +603,10 @@ public class MatchingEngineServiceTests
             .ReturnsAsync(() => CreateOrder(buy3.Id, buy3.UserId, buy3.StockId, buy3.Side, buy3.Price, buy3.Quantity, buy3.FilledQuantity, true));
 
         // Act
-        List<Trade> executedTrades = await _service.ProcessAsync(sell1, CancellationToken.None);
+        List<Trade> executedTrades = await _service.ProcessOrderBookAsync(stockId, CancellationToken.None);
 
         // Assert
-        _orderRepositoryMock.Verify(
-            x => x.CancelAsync(buy3.Id, It.IsAny<CancellationToken>()),
-            Times.Once
-        );
-
+        _orderRepositoryMock.Verify(x => x.CancelAsync(buy3.Id, It.IsAny<CancellationToken>()), Times.Once);
         Assert.DoesNotContain(executedTrades, t => t.BuyOrderId == buy3.Id);
         Assert.Equal(2, executedTrades.Count);
 
@@ -622,7 +635,7 @@ public class MatchingEngineServiceTests
     }
 
     [Fact]
-    public async Task ProcessAsync_Should_Not_Match_Orders_With_Same_Side_Buy()
+    public async Task ProcessOrderBookAsync_Should_Not_Match_Orders_With_Same_Side_Buy()
     {
         // Arrange
         var stockId = Guid.NewGuid();
@@ -638,7 +651,8 @@ public class MatchingEngineServiceTests
         Order[] allOrders = [buyOrder1, buyOrder2];
         User[] allUsers = [user1, user2];
 
-        _orderRepositoryMock.Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
+        _orderRepositoryMock
+            .Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(allOrders);
 
         _orderRepositoryMock
@@ -649,23 +663,25 @@ public class MatchingEngineServiceTests
                 return CloneOrder(original);
             });
 
-        _userRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        _userRepositoryMock
+            .Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken _) => allUsers.First(u => u.Id == id));
 
-        _userRepositoryMock.Setup(x => x.HasSufficientBalanceAsync(It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
+        _userRepositoryMock
+            .Setup(x => x.HasSufficientBalanceAsync(It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
         await _service.StartAsync(CancellationToken.None);
 
         // Act
-        List<Trade> executedTrades = await _service.ProcessAsync(buyOrder1, CancellationToken.None);
+        List<Trade> executedTrades = await _service.ProcessOrderBookAsync(stockId, CancellationToken.None);
 
         // Assert
         Assert.Empty(executedTrades);
     }
 
     [Fact]
-    public async Task ProcessAsync_Should_Not_Match_Orders_With_Same_Side_Sell()
+    public async Task ProcessOrderBookAsync_Should_Not_Match_Orders_With_Same_Side_Sell()
     {
         // Arrange
         var stockId = Guid.NewGuid();
@@ -681,7 +697,8 @@ public class MatchingEngineServiceTests
         Order[] allOrders = [sellOrder1, sellOrder2];
         User[] allUsers = [user1, user2];
 
-        _orderRepositoryMock.Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
+        _orderRepositoryMock
+            .Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(allOrders);
 
         _orderRepositoryMock
@@ -692,23 +709,25 @@ public class MatchingEngineServiceTests
                 return CloneOrder(original);
             });
 
-        _userRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        _userRepositoryMock
+            .Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken _) => allUsers.First(u => u.Id == id));
 
-        _userRepositoryMock.Setup(x => x.HasSufficientBalanceAsync(It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
+        _userRepositoryMock
+            .Setup(x => x.HasSufficientBalanceAsync(It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
         await _service.StartAsync(CancellationToken.None);
 
         // Act
-        List<Trade> executedTrades = await _service.ProcessAsync(sellOrder1, CancellationToken.None);
+        List<Trade> executedTrades = await _service.ProcessOrderBookAsync(stockId, CancellationToken.None);
 
         // Assert
         Assert.Empty(executedTrades);
     }
 
     [Fact]
-    public async Task ProcessAsync_Should_Update_User_Balances_Correctly()
+    public async Task ProcessOrderBookAsync_Should_Update_User_Balances_Correctly()
     {
         // Arrange
         var stockId = Guid.NewGuid();
@@ -724,7 +743,8 @@ public class MatchingEngineServiceTests
         Order[] allOrders = [buyOrder, sellOrder];
         User[] allUsers = [buyer, seller];
 
-        _orderRepositoryMock.Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
+        _orderRepositoryMock
+            .Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(allOrders);
 
         _orderRepositoryMock
@@ -735,16 +755,18 @@ public class MatchingEngineServiceTests
                 return CloneOrder(original);
             });
 
-        _userRepositoryMock.Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        _userRepositoryMock
+            .Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken _) => allUsers.First(u => u.Id == id));
 
-        _userRepositoryMock.Setup(x => x.HasSufficientBalanceAsync(It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
+        _userRepositoryMock
+            .Setup(x => x.HasSufficientBalanceAsync(It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
         await _service.StartAsync(CancellationToken.None);
 
         // Act
-        List<Trade> executedTrades = await _service.ProcessAsync(buyOrder, CancellationToken.None);
+        List<Trade> executedTrades = await _service.ProcessOrderBookAsync(stockId, CancellationToken.None);
 
         // Assert
         Assert.Single(executedTrades);
@@ -758,19 +780,28 @@ public class MatchingEngineServiceTests
     }
 
     [Fact]
-    public async Task StartAsync_Should_Build_OrderBooks_And_Log_TotalOrders()
+    public async Task StartAsync_Should_Build_OrderBooks_And_Enqueue_All_Stocks()
     {
         // Arrange
-        Order[] allOrders = [CreateOrder()];
+        var stockA = Guid.NewGuid();
+        var stockB = Guid.NewGuid();
+        Order[] orders =
+        [
+            CreateOrder(stockId: stockA),
+            CreateOrder(stockId: stockA),
+            CreateOrder(stockId: stockB)
+        ];
 
-        _orderRepositoryMock.Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(allOrders);
+        _orderRepositoryMock
+            .Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(orders);
 
         // Act
         await _service.StartAsync(CancellationToken.None);
 
         // Assert
-        _loggerMock.VerifyLog(LogLevel.Information, "Matching Engine started", Times.Once());
+        _dirtyQueueMock.Verify(x => x.Enqueue(stockA), Times.Once);
+        _dirtyQueueMock.Verify(x => x.Enqueue(stockB), Times.Once);
     }
 
     private static Order CreateOrder(

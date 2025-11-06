@@ -1,6 +1,7 @@
 ﻿using FluentValidation.Results;
 using Microsoft.Extensions.Logging;
 using Stockhub.Common.Domain.Results;
+using Stockhub.Consumers.MatchingEngine.Application.Queues;
 using Stockhub.Consumers.MatchingEngine.Application.Validators;
 using Stockhub.Consumers.MatchingEngine.Domain.Entities;
 using Stockhub.Consumers.MatchingEngine.Domain.ValueObjects;
@@ -12,6 +13,7 @@ internal sealed class MatchingEngineService(
     IOrderBookRepository orderBookRepository,
     IOrderRepository orderRepository,
     IUserRepository userRepository,
+    IDirtyQueue dirtyQueue,
     OrderValidator orderValidator,
     ILogger<MatchingEngineService> logger
 ) : IMatchingEngineService
@@ -22,59 +24,53 @@ internal sealed class MatchingEngineService(
 
         orderBookRepository.BuildFromOrders(openOrders);
 
+        foreach (Guid stockId in openOrders.Select(o => o.StockId).Distinct())
+        {
+            dirtyQueue.Enqueue(stockId);
+        }
+
         logger.LogInformation("Matching Engine started with {Count} existing orders", openOrders.Count());
     }
 
-    public async Task<List<Trade>> ProcessAsync(Order incomingOrder, CancellationToken cancellationToken)
+    public async Task EnqueueOrderAsync(Order incomingOrder, CancellationToken cancellationToken)
     {
-        Result orderValidation = await ValidateOrderAsync(incomingOrder, cancellationToken);
-        if (orderValidation.IsFailure)
+        Result validation = await ValidateOrderAsync(incomingOrder, cancellationToken);
+        if (validation.IsFailure)
         {
             await CommitCancelOrder(incomingOrder, cancellationToken);
-            return [];
+            return;
+        }
+
+        if (orderBookRepository.ContainsOrder(incomingOrder.Id))
+        {
+            return;
         }
 
         orderBookRepository.AddOrder(incomingOrder);
-
-        List<Trade> executedTrades = await ExecuteOrderMatchingAsync(incomingOrder, cancellationToken);
-
-        return executedTrades;
+        dirtyQueue.Enqueue(incomingOrder.StockId);
     }
 
-
-    private async Task<Result> ValidateOrderAsync(Order order, CancellationToken cancellationToken)
+    public async Task<List<Trade>> ProcessOrderBookAsync(Guid stockId, CancellationToken cancellationToken)
     {
-        ValidationResult validation = await orderValidator.ValidateAsync(order, cancellationToken);
+        OrderBook orderBook = orderBookRepository.GetOrderBookSnapshot(stockId);
 
-        if (validation.IsValid)
+        if (orderBook.Count == 0)
         {
-            return Result.Success();
+            dirtyQueue.MarkProcessed(stockId);
+            return [];
         }
 
-        ValidationError validationError = ToValidationError(validation);
-
-        logger.LogWarning(
-            "Invalid order {OrderId} (User {UserId}, Stock {StockId}): {Errors}",
-            order.Id, order.UserId, order.StockId,
-            string.Join("; ", validationError.Errors.Select(e => e.Description))
-        );
-
-        return Result.Failure(validationError);
-    }
-
-    private async Task<List<Trade>> ExecuteOrderMatchingAsync(Order incomingOrder, CancellationToken cancellationToken)
-    {
         var executedTrades = new List<Trade>();
-        OrderBook orderBook = orderBookRepository.GetOrderBookSnapshot(incomingOrder.StockId);
         int safetyLimit = orderBook.Count * 2;
         int iterationCount = 0;
 
         while (iterationCount++ < safetyLimit)
         {
-            List<TradeProposal> proposals = orderBook.ProposeTrades(incomingOrder);
+            List<TradeProposal> proposals = orderBook.ProposeAllPossibleTrades();
 
             if (!proposals.Any())
             {
+                dirtyQueue.MarkProcessed(stockId);
                 break;
             }
 
@@ -94,11 +90,31 @@ internal sealed class MatchingEngineService(
         if (iterationCount >= safetyLimit)
         {
             throw new InvalidOperationException(
-                $"Potential infinite loop detected while matching order {incomingOrder.Id}. Iteration limit ({safetyLimit}) exceeded."
+                $"Potential infinite loop detected while matching stock {stockId}. Iteration limit ({safetyLimit}) exceeded."
             );
         }
 
         return executedTrades;
+    }
+
+    private async Task<Result> ValidateOrderAsync(Order order, CancellationToken cancellationToken)
+    {
+        ValidationResult validation = await orderValidator.ValidateAsync(order, cancellationToken);
+
+        if (validation.IsValid)
+        {
+            return Result.Success();
+        }
+
+        ValidationError validationError = ToValidationError(validation);
+
+        logger.LogWarning(
+            "Invalid order {OrderId} (User {UserId}, Stock {StockId}): {Errors}",
+            order.Id, order.UserId, order.StockId,
+            string.Join("; ", validationError.Errors.Select(e => e.Description))
+        );
+
+        return Result.Failure(validationError);
     }
 
     private async Task<Result<Trade>> ExecuteTradeProposalAsync(TradeProposal proposal, CancellationToken cancellationToken)

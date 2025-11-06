@@ -45,7 +45,7 @@ internal sealed class OrderCdcConsumer(
 
                 if (placedEvent is not null)
                 {
-                    await matchingEngine.ProcessAsync(placedEvent, cancellationToken);
+                    await matchingEngine.EnqueueOrderAsync(placedEvent, cancellationToken);
                 }
 
                 break;
