@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using System.Collections.Concurrent;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Stockhub.Consumers.MatchingEngine.Application.Queues;
 using Stockhub.Consumers.MatchingEngine.Application.Services;
@@ -10,6 +11,8 @@ internal sealed class MatchingWorkerHostedService(
     IMatchingEngineService matchingEngineService,
     ILogger<MatchingWorkerHostedService> logger) : BackgroundService
 {
+    private readonly ConcurrentDictionary<Guid, Task> _runningTasks = new();
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
@@ -20,15 +23,44 @@ internal sealed class MatchingWorkerHostedService(
                 continue;
             }
 
-            try
+            if (_runningTasks.ContainsKey(stockId))
+            {
+                continue;
+            }
+
+            Task task = ProcessStockAsync(stockId, stoppingToken);
+            _runningTasks[stockId] = task;
+        }
+    }
+
+    private async Task ProcessStockAsync(Guid stockId, CancellationToken stoppingToken)
+    {
+        try
+        {
+            while (!stoppingToken.IsCancellationRequested && dirtyQueue.IsDirty(stockId))
             {
                 await matchingEngineService.MatchPendingOrdersAsync(stockId, stoppingToken);
-                logger.LogInformation("Processing stock {StockId}", stockId);
-            }
-            finally
-            {
                 dirtyQueue.MarkProcessed(stockId);
+                await Task.Delay(5, stoppingToken);
             }
         }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error processing stock {StockId}", stockId);
+        }
+        finally
+        {
+            _runningTasks.TryRemove(stockId, out _);
+        }
+    }
+
+    public override async Task StopAsync(CancellationToken cancellationToken)
+    {
+        if (_runningTasks.IsEmpty)
+        {
+            await Task.WhenAll(_runningTasks.Values);
+        }
+
+        await base.StopAsync(cancellationToken);
     }
 }

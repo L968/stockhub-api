@@ -6,4 +6,5 @@ public interface IDirtyQueue
     bool TryDequeue(out Guid stockId);
     void MarkProcessed(Guid stockId);
     bool IsProcessing(Guid stockId);
+    bool IsDirty(Guid stockId);
 }

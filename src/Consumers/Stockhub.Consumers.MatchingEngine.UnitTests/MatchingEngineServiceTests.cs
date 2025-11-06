@@ -16,6 +16,7 @@ public class MatchingEngineServiceTests
     private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly Mock<IDirtyQueue> _dirtyQueueMock;
     private readonly Mock<ILogger<MatchingEngineService>> _loggerMock;
+    private readonly OrderBookRepository _orderBookRepository;
     private readonly MatchingEngineService _service;
 
     public MatchingEngineServiceTests()
@@ -23,6 +24,7 @@ public class MatchingEngineServiceTests
         _orderRepositoryMock = new Mock<IOrderRepository>();
         _userRepositoryMock = new Mock<IUserRepository>();
         _dirtyQueueMock = new Mock<IDirtyQueue>();
+        _orderBookRepository = new OrderBookRepository();
         _loggerMock = new Mock<ILogger<MatchingEngineService>>();
 
         _orderRepositoryMock
@@ -38,13 +40,136 @@ public class MatchingEngineServiceTests
             .Returns(Task.CompletedTask);
 
         _service = new MatchingEngineService(
-            new OrderBookRepository(),
+            _orderBookRepository,
             _orderRepositoryMock.Object,
             _userRepositoryMock.Object,
             _dirtyQueueMock.Object,
             new OrderValidator(_userRepositoryMock.Object),
             _loggerMock.Object
         );
+    }
+
+    [Fact]
+    public async Task EnqueueOrderAsync_Should_Add_Order_And_Enqueue_Stock_When_Valid()
+    {
+        // Arrange
+        var stockId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        Order order = CreateOrder(userId: userId, stockId: stockId, price: 100, quantity: 5);
+
+        _userRepositoryMock
+            .Setup(x => x.GetAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { Id = userId, CurrentBalance = 1000 });
+
+        _userRepositoryMock
+            .Setup(x => x.HasSufficientBalanceAsync(userId, order.Price * order.Quantity, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        // Act
+        await _service.EnqueueOrderAsync(order, CancellationToken.None);
+
+        // Assert
+        Assert.True(_orderBookRepository.ContainsOrder(order.Id));
+        _dirtyQueueMock.Verify(x => x.Enqueue(stockId), Times.Once);
+    }
+
+    [Fact]
+    public async Task EnqueueOrderAsync_Should_Cancel_Order_When_Validation_Fails()
+    {
+        // Arrange
+        var stockId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        Order order = CreateOrder(userId: userId, stockId: stockId, price: 0);
+
+        _userRepositoryMock
+            .Setup(x => x.GetAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { Id = userId, CurrentBalance = 1000 });
+
+        _userRepositoryMock
+            .Setup(x => x.HasSufficientBalanceAsync(userId, It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        // Act
+        await _service.EnqueueOrderAsync(order, CancellationToken.None);
+
+        // Assert
+        _orderRepositoryMock.Verify(x => x.CancelAsync(order.Id, It.IsAny<CancellationToken>()), Times.Once);
+        _dirtyQueueMock.Verify(x => x.Enqueue(It.IsAny<Guid>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task EnqueueOrderAsync_Should_Log_Validation_Error_When_Order_Invalid()
+    {
+        // Arrange
+        var stockId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        Order order = CreateOrder(userId: userId, stockId: stockId, price: 0);
+
+        _userRepositoryMock
+            .Setup(x => x.GetAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { Id = userId, CurrentBalance = 1000 });
+
+        _userRepositoryMock
+            .Setup(x => x.HasSufficientBalanceAsync(userId, It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        // Act
+        await _service.EnqueueOrderAsync(order, CancellationToken.None);
+
+        // Assert
+        _loggerMock.VerifyLog(LogLevel.Warning, "Invalid order", Times.AtLeastOnce());
+    }
+
+    [Fact]
+    public async Task EnqueueOrderAsync_Should_Not_Add_Duplicate_Order()
+    {
+        // Arrange
+        var stockId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        Order order = CreateOrder(userId: userId, stockId: stockId, price: 100, quantity: 5);
+
+        _userRepositoryMock
+            .Setup(x => x.GetAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { Id = userId, CurrentBalance = 1000 });
+
+        _userRepositoryMock
+            .Setup(x => x.HasSufficientBalanceAsync(userId, It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        _orderBookRepository.AddOrder(order);
+
+        // Act
+        await _service.EnqueueOrderAsync(order, CancellationToken.None);
+
+        // Assert
+        _dirtyQueueMock.Verify(x => x.Enqueue(It.IsAny<Guid>()), Times.Never);
+        Assert.Equal(1, _orderBookRepository.GetOrderBookSnapshot(stockId).Count);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_Should_Build_OrderBook_And_Enqueue_Distinct_Stocks()
+    {
+        // Arrange
+        var stockA = Guid.NewGuid();
+        var stockB = Guid.NewGuid();
+
+        Order[] openOrders =
+        [
+            CreateOrder(stockId: stockA),
+            CreateOrder(stockId: stockA),
+            CreateOrder(stockId: stockB)
+        ];
+
+        _orderRepositoryMock
+            .Setup(x => x.GetAllOpenOrdersAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(openOrders);
+
+        // Act
+        await _service.InitializeAsync(CancellationToken.None);
+
+        // Assert
+        _dirtyQueueMock.Verify(x => x.Enqueue(stockA), Times.Once);
+        _dirtyQueueMock.Verify(x => x.Enqueue(stockB), Times.Once);
     }
 
     [Fact]

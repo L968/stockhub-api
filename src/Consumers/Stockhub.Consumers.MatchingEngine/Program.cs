@@ -7,6 +7,7 @@ using Stockhub.Aspire.ServiceDefaults;
 using Stockhub.Common.Infrastructure;
 using Stockhub.Common.Infrastructure.Extensions;
 using Stockhub.Common.Messaging.Consumers.Configuration;
+using Stockhub.Consumers.MatchingEngine.Application.Queues;
 using Stockhub.Consumers.MatchingEngine.Application.Services;
 using Stockhub.Consumers.MatchingEngine.Application.Validators;
 using Stockhub.Consumers.MatchingEngine.Infrastructure.Database;
@@ -30,6 +31,7 @@ builder.Services.AddScoped<IOrderBookRepository, OrderBookRepository>();
 
 builder.Services.AddScoped<OrderValidator>();
 
+builder.Services.AddSingleton<IDirtyQueue, DirtyQueue>();
 builder.Services.AddSingleton<IMatchingEngineService, MatchingEngineService>();
 
 builder.Services.AddScoped<OrderPlacedMapper>();

@@ -31,5 +31,7 @@ internal sealed class DirtyQueue : IDirtyQueue
     public void MarkProcessed(Guid stockId) => _processingStocks.TryRemove(stockId, out _);
 
     public bool IsProcessing(Guid stockId) => _processingStocks.ContainsKey(stockId);
+
+    public bool IsDirty(Guid stockId) => _queue.Contains(stockId) || IsProcessing(stockId);
 }
 
