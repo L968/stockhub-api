@@ -69,7 +69,7 @@ internal sealed class OrderRepository(IDbConnection connection) : IOrderReposito
             SET is_cancelled = TRUE,
                 updated_at = NOW() AT TIME ZONE 'UTC'
             WHERE id = @Id
-            """;
+            ";
 
         await connection.ExecuteAsync(
             new CommandDefinition(sql, new { Id = orderId }, cancellationToken: cancellationToken));

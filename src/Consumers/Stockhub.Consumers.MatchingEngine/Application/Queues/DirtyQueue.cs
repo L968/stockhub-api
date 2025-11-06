@@ -5,11 +5,11 @@ namespace Stockhub.Consumers.MatchingEngine.Application.Queues;
 internal sealed class DirtyQueue : IDirtyQueue
 {
     private readonly ConcurrentQueue<Guid> _queue = new();
-    private readonly ConcurrentDictionary<Guid, byte> _processingStocks = new();
+    private readonly ConcurrentDictionary<Guid, byte> _pendingStocks = new();
 
     public bool Enqueue(Guid stockId)
     {
-        if (_processingStocks.TryAdd(stockId, 0))
+        if (_pendingStocks.TryAdd(stockId, 0))
         {
             _queue.Enqueue(stockId);
             return true;
@@ -19,19 +19,30 @@ internal sealed class DirtyQueue : IDirtyQueue
 
     public bool TryDequeue(out Guid stockId)
     {
-        if (_queue.TryDequeue(out stockId))
+        while (_queue.TryDequeue(out stockId))
         {
-            return true;
+            if (_pendingStocks.ContainsKey(stockId))
+            {
+                return true;
+            }
         }
 
         stockId = Guid.Empty;
         return false;
     }
 
-    public void MarkProcessed(Guid stockId) => _processingStocks.TryRemove(stockId, out _);
+    public void MarkProcessed(Guid stockId)
+    {
+        _pendingStocks.TryRemove(stockId, out _);
+    }
 
-    public bool IsProcessing(Guid stockId) => _processingStocks.ContainsKey(stockId);
+    public bool IsProcessing(Guid stockId)
+    {
+        return _pendingStocks.ContainsKey(stockId);
+    }
 
-    public bool IsDirty(Guid stockId) => _queue.Contains(stockId) || IsProcessing(stockId);
+    public bool IsDirty(Guid stockId)
+    {
+        return IsProcessing(stockId);
+    }
 }
-

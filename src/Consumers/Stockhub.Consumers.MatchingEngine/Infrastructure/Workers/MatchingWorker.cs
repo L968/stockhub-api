@@ -19,17 +19,15 @@ internal sealed class MatchingWorkerHostedService(
         {
             if (!dirtyQueue.TryDequeue(out Guid stockId))
             {
-                await Task.Delay(5, stoppingToken);
+                await Task.Delay(100, stoppingToken);
                 continue;
             }
 
-            if (_runningTasks.ContainsKey(stockId))
+            if (_runningTasks.TryAdd(stockId, Task.CompletedTask))
             {
-                continue;
+                Task task = ProcessStockAsync(stockId, stoppingToken);
+                _runningTasks[stockId] = task;
             }
-
-            Task task = ProcessStockAsync(stockId, stoppingToken);
-            _runningTasks[stockId] = task;
         }
     }
 
@@ -37,12 +35,7 @@ internal sealed class MatchingWorkerHostedService(
     {
         try
         {
-            while (!stoppingToken.IsCancellationRequested && dirtyQueue.IsDirty(stockId))
-            {
-                await matchingEngineService.MatchPendingOrdersAsync(stockId, stoppingToken);
-                dirtyQueue.MarkProcessed(stockId);
-                await Task.Delay(5, stoppingToken);
-            }
+            await matchingEngineService.MatchPendingOrdersAsync(stockId, stoppingToken);
         }
         catch (Exception ex)
         {
@@ -56,11 +49,7 @@ internal sealed class MatchingWorkerHostedService(
 
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
-        if (_runningTasks.IsEmpty)
-        {
-            await Task.WhenAll(_runningTasks.Values);
-        }
-
+        await Task.WhenAll(_runningTasks.Values);
         await base.StopAsync(cancellationToken);
     }
 }

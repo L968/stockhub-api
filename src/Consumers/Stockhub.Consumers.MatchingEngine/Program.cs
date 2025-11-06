@@ -14,6 +14,7 @@ using Stockhub.Consumers.MatchingEngine.Infrastructure.Database;
 using Stockhub.Consumers.MatchingEngine.Infrastructure.Database.Interfaces;
 using Stockhub.Consumers.MatchingEngine.Infrastructure.Kafka;
 using Stockhub.Consumers.MatchingEngine.Infrastructure.Kafka.Mappers;
+using Stockhub.Consumers.MatchingEngine.Infrastructure.Workers;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
@@ -25,16 +26,16 @@ builder.Services.AddSingleton(kafkaSettings);
 string dbConnectionString = builder.Configuration.GetConnectionStringOrThrow(ServiceNames.PostgresDb);
 builder.Services.AddScoped<IDbConnection>(sp => new NpgsqlConnection(dbConnectionString));
 
+builder.Services.AddScoped<OrderValidator>();
+builder.Services.AddScoped<OrderPlacedMapper>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped<IOrderBookRepository, OrderBookRepository>();
-
-builder.Services.AddScoped<OrderValidator>();
 
 builder.Services.AddSingleton<IDirtyQueue, DirtyQueue>();
+builder.Services.AddSingleton<IOrderBookRepository, OrderBookRepository>();
 builder.Services.AddSingleton<IMatchingEngineService, MatchingEngineService>();
 
-builder.Services.AddScoped<OrderPlacedMapper>();
+builder.Services.AddHostedService<MatchingWorkerHostedService>();
 builder.Services.AddHostedService<OrderCdcConsumer>();
 
 builder.Services.AddOpenTelemetry()
