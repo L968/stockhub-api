@@ -183,71 +183,55 @@ public class MatchingEngineServiceTests
     }
 
     [Fact]
-    public async Task MatchPendingOrdersAsync_Should_Return_Empty_List_When_OrderBook_Is_Empty()
-    {
-        // Arrange
-        var stockId = Guid.NewGuid();
-
-        // Act
-        List<Trade> result = await _service.MatchPendingOrdersAsync(stockId, CancellationToken.None);
-
-        // Assert
-        Assert.Empty(result);
-        _dirtyQueueMock.Verify(x => x.MarkProcessed(stockId), Times.Once);
-        _tradeExecutorMock.Verify(x => x.ExecuteAsync(It.IsAny<TradeProposal>(), It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task MatchPendingOrdersAsync_Should_Return_Empty_List_When_No_Proposals_Available()
-    {
-        // Arrange
-        var stockId = Guid.NewGuid();
-        Order buyOrder = CreateOrder(stockId: stockId, side: OrderSide.Buy, price: 90, quantity: 10);
-        Order sellOrder = CreateOrder(stockId: stockId, side: OrderSide.Sell, price: 100, quantity: 10);
-        _orderBookRepository.AddOrder(buyOrder);
-        _orderBookRepository.AddOrder(sellOrder);
-
-        // Act
-        List<Trade> result = await _service.MatchPendingOrdersAsync(stockId, CancellationToken.None);
-
-        // Assert
-        Assert.Empty(result);
-        _dirtyQueueMock.Verify(x => x.MarkProcessed(stockId), Times.Once);
-        _tradeExecutorMock.Verify(x => x.ExecuteAsync(It.IsAny<TradeProposal>(), It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task MatchPendingOrdersAsync_Should_Execute_Single_Trade_And_Return_Result()
+    public async Task MatchPendingOrdersAsync_Should_Continue_After_First_Iteration_When_Proposals_Still_Available()
     {
         // Arrange
         var stockId = Guid.NewGuid();
         var buyerId = Guid.NewGuid();
-        var sellerId = Guid.NewGuid();
-        Order buyOrder = CreateOrder(stockId: stockId, userId: buyerId, side: OrderSide.Buy, price: 100, quantity: 10);
-        Order sellOrder = CreateOrder(stockId: stockId, userId: sellerId, side: OrderSide.Sell, price: 100, quantity: 10);
+        var sellerId1 = Guid.NewGuid();
+        var sellerId2 = Guid.NewGuid();
+        Order buyOrder = CreateOrder(stockId: stockId, userId: buyerId, side: OrderSide.Buy, price: 100, quantity: 20);
+        Order sellOrder1 = CreateOrder(stockId: stockId, userId: sellerId1, side: OrderSide.Sell, price: 100, quantity: 10);
+        Order sellOrder2 = CreateOrder(stockId: stockId, userId: sellerId2, side: OrderSide.Sell, price: 100, quantity: 10);
         _orderBookRepository.AddOrder(buyOrder);
-        _orderBookRepository.AddOrder(sellOrder);
+        _orderBookRepository.AddOrder(sellOrder1);
+        _orderBookRepository.AddOrder(sellOrder2);
 
-        var trade = new Trade(stockId, buyerId, sellerId, buyOrder.Id, sellOrder.Id, 100, 10);
+        var trade1 = new Trade(stockId, buyerId, sellerId1, buyOrder.Id, sellOrder1.Id, 100, 10);
+        var trade2 = new Trade(stockId, buyerId, sellerId2, buyOrder.Id, sellOrder2.Id, 100, 10);
+        int callCount = 0;
         _tradeExecutorMock
             .Setup(x => x.ExecuteAsync(It.IsAny<TradeProposal>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<Trade>.Success(trade))
-            .Callback<TradeProposal, CancellationToken>((proposal, _) =>
+            .ReturnsAsync((TradeProposal proposal, CancellationToken _) =>
             {
-                buyOrder.Fill(proposal.Quantity);
-                sellOrder.Fill(proposal.Quantity);
-                _orderBookRepository.UpdateOrderFilledQuantity(buyOrder.Id, buyOrder.FilledQuantity);
-                _orderBookRepository.UpdateOrderFilledQuantity(sellOrder.Id, sellOrder.FilledQuantity);
+                callCount++;
+                if (callCount == 1)
+                {
+                    buyOrder.Fill(proposal.Quantity);
+                    sellOrder1.Fill(proposal.Quantity);
+                    _orderBookRepository.UpdateOrderFilledQuantity(buyOrder.Id, buyOrder.FilledQuantity);
+                    _orderBookRepository.UpdateOrderFilledQuantity(sellOrder1.Id, sellOrder1.FilledQuantity);
+                    return Result<Trade>.Success(trade1);
+                }
+                else
+                {
+                    buyOrder.Fill(proposal.Quantity);
+                    sellOrder2.Fill(proposal.Quantity);
+                    _orderBookRepository.UpdateOrderFilledQuantity(buyOrder.Id, buyOrder.FilledQuantity);
+                    _orderBookRepository.UpdateOrderFilledQuantity(sellOrder2.Id, sellOrder2.FilledQuantity);
+                    return Result<Trade>.Success(trade2);
+                }
             });
 
         // Act
         List<Trade> result = await _service.MatchPendingOrdersAsync(stockId, CancellationToken.None);
 
         // Assert
-        Assert.Single(result);
-        Assert.Equal(trade.Id, result[0].Id);
+        Assert.Equal(2, result.Count);
+        Assert.Contains(result, t => t.Id == trade1.Id);
+        Assert.Contains(result, t => t.Id == trade2.Id);
         _dirtyQueueMock.Verify(x => x.MarkProcessed(stockId), Times.Once);
-        _tradeExecutorMock.Verify(x => x.ExecuteAsync(It.IsAny<TradeProposal>(), It.IsAny<CancellationToken>()), Times.Once);
+        _tradeExecutorMock.Verify(x => x.ExecuteAsync(It.IsAny<TradeProposal>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
     [Fact]
@@ -303,49 +287,71 @@ public class MatchingEngineServiceTests
     }
 
     [Fact]
-    public async Task MatchPendingOrdersAsync_Should_Throw_Exception_When_Safety_Limit_Exceeded()
+    public async Task MatchPendingOrdersAsync_Should_Execute_Single_Trade_And_Return_Result()
     {
         // Arrange
         var stockId = Guid.NewGuid();
         var buyerId = Guid.NewGuid();
         var sellerId = Guid.NewGuid();
-        Order buyOrder = CreateOrder(stockId: stockId, userId: buyerId, side: OrderSide.Buy, price: 100, quantity: 10, filledQuantity: 0);
-        Order sellOrder = CreateOrder(stockId: stockId, userId: sellerId, side: OrderSide.Sell, price: 100, quantity: 10, filledQuantity: 0);
+        Order buyOrder = CreateOrder(stockId: stockId, userId: buyerId, side: OrderSide.Buy, price: 100, quantity: 10);
+        Order sellOrder = CreateOrder(stockId: stockId, userId: sellerId, side: OrderSide.Sell, price: 100, quantity: 10);
         _orderBookRepository.AddOrder(buyOrder);
         _orderBookRepository.AddOrder(sellOrder);
 
-        var trade = new Trade(stockId, buyerId, sellerId, buyOrder.Id, sellOrder.Id, 100, 1);
+        var trade = new Trade(stockId, buyerId, sellerId, buyOrder.Id, sellOrder.Id, 100, 10);
         _tradeExecutorMock
             .Setup(x => x.ExecuteAsync(It.IsAny<TradeProposal>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<Trade>.Success(trade));
-
-        _orderRepositoryMock
-            .Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Guid id, CancellationToken _) => id == buyOrder.Id ? buyOrder : sellOrder);
-
-        _orderRepositoryMock
-            .Setup(x => x.UpdateFilledQuantityAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-            .Callback<Guid, int, CancellationToken>((id, filled, _) =>
+            .ReturnsAsync(Result<Trade>.Success(trade))
+            .Callback<TradeProposal, CancellationToken>((proposal, _) =>
             {
-                if (id == buyOrder.Id)
-                {
-                    buyOrder.FilledQuantity = filled;
-                    _orderBookRepository.UpdateOrderFilledQuantity(buyOrder.Id, filled);
-                }
-                else if (id == sellOrder.Id)
-                {
-                    sellOrder.FilledQuantity = filled;
-                    _orderBookRepository.UpdateOrderFilledQuantity(sellOrder.Id, filled);
-                }
-            })
-            .Returns(Task.CompletedTask);
+                buyOrder.Fill(proposal.Quantity);
+                sellOrder.Fill(proposal.Quantity);
+                _orderBookRepository.UpdateOrderFilledQuantity(buyOrder.Id, buyOrder.FilledQuantity);
+                _orderBookRepository.UpdateOrderFilledQuantity(sellOrder.Id, sellOrder.FilledQuantity);
+            });
 
-        // Act & Assert
-        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.MatchPendingOrdersAsync(stockId, CancellationToken.None)
-        );
-        Assert.Contains("Potential infinite loop detected", exception.Message);
-        Assert.Contains(stockId.ToString(), exception.Message);
+        // Act
+        List<Trade> result = await _service.MatchPendingOrdersAsync(stockId, CancellationToken.None);
+
+        // Assert
+        Assert.Single(result);
+        Assert.Equal(trade.Id, result[0].Id);
+        _dirtyQueueMock.Verify(x => x.MarkProcessed(stockId), Times.Once);
+        _tradeExecutorMock.Verify(x => x.ExecuteAsync(It.IsAny<TradeProposal>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task MatchPendingOrdersAsync_Should_Handle_Partial_Fills_Correctly()
+    {
+        // Arrange
+        var stockId = Guid.NewGuid();
+        var buyerId = Guid.NewGuid();
+        var sellerId = Guid.NewGuid();
+        Order buyOrder = CreateOrder(stockId: stockId, userId: buyerId, side: OrderSide.Buy, price: 100, quantity: 10);
+        Order sellOrder = CreateOrder(stockId: stockId, userId: sellerId, side: OrderSide.Sell, price: 100, quantity: 5);
+        _orderBookRepository.AddOrder(buyOrder);
+        _orderBookRepository.AddOrder(sellOrder);
+
+        var trade = new Trade(stockId, buyerId, sellerId, buyOrder.Id, sellOrder.Id, 100, 5);
+        _tradeExecutorMock
+            .Setup(x => x.ExecuteAsync(It.IsAny<TradeProposal>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<Trade>.Success(trade))
+            .Callback<TradeProposal, CancellationToken>((proposal, _) =>
+            {
+                buyOrder.Fill(proposal.Quantity);
+                sellOrder.Fill(proposal.Quantity);
+                _orderBookRepository.UpdateOrderFilledQuantity(buyOrder.Id, buyOrder.FilledQuantity);
+                _orderBookRepository.UpdateOrderFilledQuantity(sellOrder.Id, sellOrder.FilledQuantity);
+            });
+
+        // Act
+        List<Trade> result = await _service.MatchPendingOrdersAsync(stockId, CancellationToken.None);
+
+        // Assert
+        Assert.Single(result);
+        Assert.Equal(trade.Id, result[0].Id);
+        _dirtyQueueMock.Verify(x => x.MarkProcessed(stockId), Times.Once);
+        _tradeExecutorMock.Verify(x => x.ExecuteAsync(It.IsAny<TradeProposal>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -403,89 +409,83 @@ public class MatchingEngineServiceTests
     }
 
     [Fact]
-    public async Task MatchPendingOrdersAsync_Should_Handle_Partial_Fills_Correctly()
+    public async Task MatchPendingOrdersAsync_Should_Return_Empty_List_When_No_Proposals_Available()
+    {
+        // Arrange
+        var stockId = Guid.NewGuid();
+        Order buyOrder = CreateOrder(stockId: stockId, side: OrderSide.Buy, price: 90, quantity: 10);
+        Order sellOrder = CreateOrder(stockId: stockId, side: OrderSide.Sell, price: 100, quantity: 10);
+        _orderBookRepository.AddOrder(buyOrder);
+        _orderBookRepository.AddOrder(sellOrder);
+
+        // Act
+        List<Trade> result = await _service.MatchPendingOrdersAsync(stockId, CancellationToken.None);
+
+        // Assert
+        Assert.Empty(result);
+        _dirtyQueueMock.Verify(x => x.MarkProcessed(stockId), Times.Once);
+        _tradeExecutorMock.Verify(x => x.ExecuteAsync(It.IsAny<TradeProposal>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task MatchPendingOrdersAsync_Should_Return_Empty_List_When_OrderBook_Is_Empty()
+    {
+        // Arrange
+        var stockId = Guid.NewGuid();
+
+        // Act
+        List<Trade> result = await _service.MatchPendingOrdersAsync(stockId, CancellationToken.None);
+
+        // Assert
+        Assert.Empty(result);
+        _dirtyQueueMock.Verify(x => x.MarkProcessed(stockId), Times.Once);
+        _tradeExecutorMock.Verify(x => x.ExecuteAsync(It.IsAny<TradeProposal>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task MatchPendingOrdersAsync_Should_Throw_Exception_When_Safety_Limit_Exceeded()
     {
         // Arrange
         var stockId = Guid.NewGuid();
         var buyerId = Guid.NewGuid();
         var sellerId = Guid.NewGuid();
-        Order buyOrder = CreateOrder(stockId: stockId, userId: buyerId, side: OrderSide.Buy, price: 100, quantity: 10);
-        Order sellOrder = CreateOrder(stockId: stockId, userId: sellerId, side: OrderSide.Sell, price: 100, quantity: 5);
+        Order buyOrder = CreateOrder(stockId: stockId, userId: buyerId, side: OrderSide.Buy, price: 100, quantity: 10, filledQuantity: 0);
+        Order sellOrder = CreateOrder(stockId: stockId, userId: sellerId, side: OrderSide.Sell, price: 100, quantity: 10, filledQuantity: 0);
         _orderBookRepository.AddOrder(buyOrder);
         _orderBookRepository.AddOrder(sellOrder);
 
-        var trade = new Trade(stockId, buyerId, sellerId, buyOrder.Id, sellOrder.Id, 100, 5);
+        var trade = new Trade(stockId, buyerId, sellerId, buyOrder.Id, sellOrder.Id, 100, 1);
         _tradeExecutorMock
             .Setup(x => x.ExecuteAsync(It.IsAny<TradeProposal>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<Trade>.Success(trade))
-            .Callback<TradeProposal, CancellationToken>((proposal, _) =>
+            .ReturnsAsync(Result<Trade>.Success(trade));
+
+        _orderRepositoryMock
+            .Setup(x => x.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid id, CancellationToken _) => id == buyOrder.Id ? buyOrder : sellOrder);
+
+        _orderRepositoryMock
+            .Setup(x => x.UpdateFilledQuantityAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Callback<Guid, int, CancellationToken>((id, filled, _) =>
             {
-                buyOrder.Fill(proposal.Quantity);
-                sellOrder.Fill(proposal.Quantity);
-                _orderBookRepository.UpdateOrderFilledQuantity(buyOrder.Id, buyOrder.FilledQuantity);
-                _orderBookRepository.UpdateOrderFilledQuantity(sellOrder.Id, sellOrder.FilledQuantity);
-            });
-
-        // Act
-        List<Trade> result = await _service.MatchPendingOrdersAsync(stockId, CancellationToken.None);
-
-        // Assert
-        Assert.Single(result);
-        Assert.Equal(trade.Id, result[0].Id);
-        _dirtyQueueMock.Verify(x => x.MarkProcessed(stockId), Times.Once);
-        _tradeExecutorMock.Verify(x => x.ExecuteAsync(It.IsAny<TradeProposal>(), It.IsAny<CancellationToken>()), Times.Once);
-    }
-
-    [Fact]
-    public async Task MatchPendingOrdersAsync_Should_Continue_After_First_Iteration_When_Proposals_Still_Available()
-    {
-        // Arrange
-        var stockId = Guid.NewGuid();
-        var buyerId = Guid.NewGuid();
-        var sellerId1 = Guid.NewGuid();
-        var sellerId2 = Guid.NewGuid();
-        Order buyOrder = CreateOrder(stockId: stockId, userId: buyerId, side: OrderSide.Buy, price: 100, quantity: 20);
-        Order sellOrder1 = CreateOrder(stockId: stockId, userId: sellerId1, side: OrderSide.Sell, price: 100, quantity: 10);
-        Order sellOrder2 = CreateOrder(stockId: stockId, userId: sellerId2, side: OrderSide.Sell, price: 100, quantity: 10);
-        _orderBookRepository.AddOrder(buyOrder);
-        _orderBookRepository.AddOrder(sellOrder1);
-        _orderBookRepository.AddOrder(sellOrder2);
-
-        var trade1 = new Trade(stockId, buyerId, sellerId1, buyOrder.Id, sellOrder1.Id, 100, 10);
-        var trade2 = new Trade(stockId, buyerId, sellerId2, buyOrder.Id, sellOrder2.Id, 100, 10);
-        int callCount = 0;
-        _tradeExecutorMock
-            .Setup(x => x.ExecuteAsync(It.IsAny<TradeProposal>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((TradeProposal proposal, CancellationToken _) =>
-            {
-                callCount++;
-                if (callCount == 1)
+                if (id == buyOrder.Id)
                 {
-                    buyOrder.Fill(proposal.Quantity);
-                    sellOrder1.Fill(proposal.Quantity);
-                    _orderBookRepository.UpdateOrderFilledQuantity(buyOrder.Id, buyOrder.FilledQuantity);
-                    _orderBookRepository.UpdateOrderFilledQuantity(sellOrder1.Id, sellOrder1.FilledQuantity);
-                    return Result<Trade>.Success(trade1);
+                    buyOrder.FilledQuantity = filled;
+                    _orderBookRepository.UpdateOrderFilledQuantity(buyOrder.Id, filled);
                 }
-                else
+                else if (id == sellOrder.Id)
                 {
-                    buyOrder.Fill(proposal.Quantity);
-                    sellOrder2.Fill(proposal.Quantity);
-                    _orderBookRepository.UpdateOrderFilledQuantity(buyOrder.Id, buyOrder.FilledQuantity);
-                    _orderBookRepository.UpdateOrderFilledQuantity(sellOrder2.Id, sellOrder2.FilledQuantity);
-                    return Result<Trade>.Success(trade2);
+                    sellOrder.FilledQuantity = filled;
+                    _orderBookRepository.UpdateOrderFilledQuantity(sellOrder.Id, filled);
                 }
-            });
+            })
+            .Returns(Task.CompletedTask);
 
-        // Act
-        List<Trade> result = await _service.MatchPendingOrdersAsync(stockId, CancellationToken.None);
-
-        // Assert
-        Assert.Equal(2, result.Count);
-        Assert.Contains(result, t => t.Id == trade1.Id);
-        Assert.Contains(result, t => t.Id == trade2.Id);
-        _dirtyQueueMock.Verify(x => x.MarkProcessed(stockId), Times.Once);
-        _tradeExecutorMock.Verify(x => x.ExecuteAsync(It.IsAny<TradeProposal>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+        // Act & Assert
+        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.MatchPendingOrdersAsync(stockId, CancellationToken.None)
+        );
+        Assert.Contains("Potential infinite loop detected", exception.Message);
+        Assert.Contains(stockId.ToString(), exception.Message);
     }
 
     private static Order CreateOrder(

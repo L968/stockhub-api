@@ -121,6 +121,46 @@ public class TradeExecutorTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_Should_CancelBuyOrder_WhenBuyOrderCancelled()
+    {
+        // Arrange
+        Order buyOrder = CreateOrder(isCancelled: true);
+        Order sellOrder = CreateOrder(userId: Guid.NewGuid(), stockId: buyOrder.StockId);
+        TradeProposal proposal = CreateTradeProposal(buyOrder.StockId, buyOrder.Id, sellOrder.Id, 100, 10);
+
+        _orderRepositoryMock.Setup(x => x.GetAsync(buyOrder.Id, It.IsAny<CancellationToken>())).ReturnsAsync(buyOrder);
+        _orderRepositoryMock.Setup(x => x.GetAsync(sellOrder.Id, It.IsAny<CancellationToken>())).ReturnsAsync(sellOrder);
+
+        // Act
+        Result<Trade> result = await _tradeExecutor.ExecuteAsync(proposal, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        _orderRepositoryMock.Verify(x => x.CancelAsync(buyOrder.Id, It.IsAny<CancellationToken>()), Times.Once);
+        _orderBookRepositoryMock.Verify(x => x.CancelOrder(buyOrder.Id), Times.Once);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_Should_CancelBuyOrder_WhenBuyOrderFullyFilled()
+    {
+        // Arrange
+        Order buyOrder = CreateOrder(quantity: 10, filledQuantity: 10);
+        Order sellOrder = CreateOrder(userId: Guid.NewGuid(), stockId: buyOrder.StockId, quantity: 10);
+        TradeProposal proposal = CreateTradeProposal(buyOrder.StockId, buyOrder.Id, sellOrder.Id, 100, 10);
+
+        _orderRepositoryMock.Setup(x => x.GetAsync(buyOrder.Id, It.IsAny<CancellationToken>())).ReturnsAsync(buyOrder);
+        _orderRepositoryMock.Setup(x => x.GetAsync(sellOrder.Id, It.IsAny<CancellationToken>())).ReturnsAsync(sellOrder);
+
+        // Act
+        Result<Trade> result = await _tradeExecutor.ExecuteAsync(proposal, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        _orderRepositoryMock.Verify(x => x.CancelAsync(buyOrder.Id, It.IsAny<CancellationToken>()), Times.Once);
+        _orderBookRepositoryMock.Verify(x => x.CancelOrder(buyOrder.Id), Times.Once);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_Should_CancelBuyOrder_WhenBuyOrderInvalid()
     {
         // Arrange
@@ -138,6 +178,88 @@ public class TradeExecutorTests
         Assert.True(result.IsFailure);
         _orderRepositoryMock.Verify(x => x.CancelAsync(buyOrder.Id, It.IsAny<CancellationToken>()), Times.Once);
         _orderBookRepositoryMock.Verify(x => x.CancelOrder(buyOrder.Id), Times.Once);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_Should_CancelBuyOrder_WhenBuyOrderPriceNegative()
+    {
+        // Arrange
+        Order buyOrder = CreateOrder(price: -10);
+        Order sellOrder = CreateOrder(userId: Guid.NewGuid(), stockId: buyOrder.StockId);
+        TradeProposal proposal = CreateTradeProposal(buyOrder.StockId, buyOrder.Id, sellOrder.Id, 100, 10);
+
+        _orderRepositoryMock.Setup(x => x.GetAsync(buyOrder.Id, It.IsAny<CancellationToken>())).ReturnsAsync(buyOrder);
+        _orderRepositoryMock.Setup(x => x.GetAsync(sellOrder.Id, It.IsAny<CancellationToken>())).ReturnsAsync(sellOrder);
+
+        // Act
+        Result<Trade> result = await _tradeExecutor.ExecuteAsync(proposal, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        _orderRepositoryMock.Verify(x => x.CancelAsync(buyOrder.Id, It.IsAny<CancellationToken>()), Times.Once);
+        _orderBookRepositoryMock.Verify(x => x.CancelOrder(buyOrder.Id), Times.Once);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_Should_CancelBuyOrder_WhenBuyOrderPriceZero()
+    {
+        // Arrange
+        Order buyOrder = CreateOrder(price: 0);
+        Order sellOrder = CreateOrder(userId: Guid.NewGuid(), stockId: buyOrder.StockId);
+        TradeProposal proposal = CreateTradeProposal(buyOrder.StockId, buyOrder.Id, sellOrder.Id, 100, 10);
+
+        _orderRepositoryMock.Setup(x => x.GetAsync(buyOrder.Id, It.IsAny<CancellationToken>())).ReturnsAsync(buyOrder);
+        _orderRepositoryMock.Setup(x => x.GetAsync(sellOrder.Id, It.IsAny<CancellationToken>())).ReturnsAsync(sellOrder);
+
+        // Act
+        Result<Trade> result = await _tradeExecutor.ExecuteAsync(proposal, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        _orderRepositoryMock.Verify(x => x.CancelAsync(buyOrder.Id, It.IsAny<CancellationToken>()), Times.Once);
+        _orderBookRepositoryMock.Verify(x => x.CancelOrder(buyOrder.Id), Times.Once);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_Should_CancelSellOrder_WhenSellOrderCancelled()
+    {
+        // Arrange
+        Order buyOrder = CreateOrder();
+        Order sellOrder = CreateOrder(userId: Guid.NewGuid(), stockId: buyOrder.StockId, isCancelled: true);
+        TradeProposal proposal = CreateTradeProposal(buyOrder.StockId, buyOrder.Id, sellOrder.Id, 100, 10);
+
+        _orderRepositoryMock.Setup(x => x.GetAsync(buyOrder.Id, It.IsAny<CancellationToken>())).ReturnsAsync(buyOrder);
+        _orderRepositoryMock.Setup(x => x.GetAsync(sellOrder.Id, It.IsAny<CancellationToken>())).ReturnsAsync(sellOrder);
+
+        // Act
+        Result<Trade> result = await _tradeExecutor.ExecuteAsync(proposal, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        _orderRepositoryMock.Verify(x => x.CancelAsync(sellOrder.Id, It.IsAny<CancellationToken>()), Times.Once);
+        _orderBookRepositoryMock.Verify(x => x.CancelOrder(sellOrder.Id), Times.Once);
+        _orderRepositoryMock.Verify(x => x.CancelAsync(buyOrder.Id, It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_Should_CancelSellOrder_WhenSellOrderFullyFilled()
+    {
+        // Arrange
+        Order buyOrder = CreateOrder();
+        Order sellOrder = CreateOrder(userId: Guid.NewGuid(), stockId: buyOrder.StockId, quantity: 10, filledQuantity: 10);
+        TradeProposal proposal = CreateTradeProposal(buyOrder.StockId, buyOrder.Id, sellOrder.Id, 100, 10);
+
+        _orderRepositoryMock.Setup(x => x.GetAsync(buyOrder.Id, It.IsAny<CancellationToken>())).ReturnsAsync(buyOrder);
+        _orderRepositoryMock.Setup(x => x.GetAsync(sellOrder.Id, It.IsAny<CancellationToken>())).ReturnsAsync(sellOrder);
+
+        // Act
+        Result<Trade> result = await _tradeExecutor.ExecuteAsync(proposal, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        _orderRepositoryMock.Verify(x => x.CancelAsync(sellOrder.Id, It.IsAny<CancellationToken>()), Times.Once);
+        _orderBookRepositoryMock.Verify(x => x.CancelOrder(sellOrder.Id), Times.Once);
+        _orderRepositoryMock.Verify(x => x.CancelAsync(buyOrder.Id, It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -219,6 +341,32 @@ public class TradeExecutorTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_Should_ExecuteTrade_WhenOrdersPartiallyFilled()
+    {
+        // Arrange
+        Order buyOrder = CreateOrder(quantity: 20, filledQuantity: 5);
+        Order sellOrder = CreateOrder(userId: Guid.NewGuid(), stockId: buyOrder.StockId, quantity: 20, filledQuantity: 5);
+        User buyer = CreateUser(id: buyOrder.UserId, balance: 2000);
+        User seller = CreateUser(id: sellOrder.UserId, balance: 500);
+        TradeProposal proposal = CreateTradeProposal(buyOrder.StockId, buyOrder.Id, sellOrder.Id, 100, 10);
+
+        _orderRepositoryMock.Setup(x => x.GetAsync(buyOrder.Id, It.IsAny<CancellationToken>())).ReturnsAsync(buyOrder);
+        _orderRepositoryMock.Setup(x => x.GetAsync(sellOrder.Id, It.IsAny<CancellationToken>())).ReturnsAsync(sellOrder);
+        _userRepositoryMock.Setup(x => x.GetAsync(buyOrder.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(buyer);
+        _userRepositoryMock.Setup(x => x.GetAsync(sellOrder.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(seller);
+
+        // Act
+        Result<Trade> result = await _tradeExecutor.ExecuteAsync(proposal, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.Equal(15, buyOrder.FilledQuantity);
+        Assert.Equal(15, sellOrder.FilledQuantity);
+        _orderRepositoryMock.Verify(x => x.UpdateFilledQuantityAsync(buyOrder.Id, 15, It.IsAny<CancellationToken>()), Times.Once);
+        _orderRepositoryMock.Verify(x => x.UpdateFilledQuantityAsync(sellOrder.Id, 15, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_Should_Fail_WhenBuyerHasInsufficientBalance()
     {
         // Arrange
@@ -243,6 +391,113 @@ public class TradeExecutorTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_Should_HandleCancellationToken_WhenProvided()
+    {
+        // Arrange
+        using var cts = new CancellationTokenSource();
+        CancellationToken cancellationToken = cts.Token;
+        Order buyOrder = CreateOrder();
+        Order sellOrder = CreateOrder(userId: Guid.NewGuid(), stockId: buyOrder.StockId);
+        User buyer = CreateUser(id: buyOrder.UserId, balance: 2000);
+        User seller = CreateUser(id: sellOrder.UserId, balance: 500);
+        TradeProposal proposal = CreateTradeProposal(buyOrder.StockId, buyOrder.Id, sellOrder.Id, 100, 10);
+
+        _orderRepositoryMock.Setup(x => x.GetAsync(buyOrder.Id, cancellationToken)).ReturnsAsync(buyOrder);
+        _orderRepositoryMock.Setup(x => x.GetAsync(sellOrder.Id, cancellationToken)).ReturnsAsync(sellOrder);
+        _userRepositoryMock.Setup(x => x.GetAsync(buyOrder.UserId, cancellationToken)).ReturnsAsync(buyer);
+        _userRepositoryMock.Setup(x => x.GetAsync(sellOrder.UserId, cancellationToken)).ReturnsAsync(seller);
+
+        // Act
+        Result<Trade> result = await _tradeExecutor.ExecuteAsync(proposal, cancellationToken);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        _orderRepositoryMock.Verify(x => x.GetAsync(buyOrder.Id, cancellationToken), Times.Once);
+        _orderRepositoryMock.Verify(x => x.GetAsync(sellOrder.Id, cancellationToken), Times.Once);
+        _userRepositoryMock.Verify(x => x.GetAsync(buyOrder.UserId, cancellationToken), Times.Once);
+        _userRepositoryMock.Verify(x => x.GetAsync(sellOrder.UserId, cancellationToken), Times.Once);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_Should_LogInformation_WhenTradeExecuted()
+    {
+        // Arrange
+        var stockId = Guid.NewGuid();
+        Order buyOrder = CreateOrder(stockId: stockId);
+        Order sellOrder = CreateOrder(userId: Guid.NewGuid(), stockId: stockId);
+        User buyer = CreateUser(id: buyOrder.UserId, balance: 2000);
+        User seller = CreateUser(id: sellOrder.UserId, balance: 500);
+        TradeProposal proposal = CreateTradeProposal(stockId, buyOrder.Id, sellOrder.Id, 100, 10);
+
+        _orderRepositoryMock.Setup(x => x.GetAsync(buyOrder.Id, It.IsAny<CancellationToken>())).ReturnsAsync(buyOrder);
+        _orderRepositoryMock.Setup(x => x.GetAsync(sellOrder.Id, It.IsAny<CancellationToken>())).ReturnsAsync(sellOrder);
+        _userRepositoryMock.Setup(x => x.GetAsync(buyOrder.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(buyer);
+        _userRepositoryMock.Setup(x => x.GetAsync(sellOrder.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(seller);
+
+        // Act
+        Result<Trade> result = await _tradeExecutor.ExecuteAsync(proposal, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        _loggerMock.Verify(
+            x => x.Log(
+                LogLevel.Information,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Trade executed")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_Should_NotCancelBuyOrder_WhenSellOrderInvalid()
+    {
+        // Arrange
+        Order buyOrder = CreateOrder();
+        Order sellOrder = CreateOrder(quantity: 0, userId: Guid.NewGuid(), stockId: buyOrder.StockId);
+        TradeProposal proposal = CreateTradeProposal(buyOrder.StockId, buyOrder.Id, sellOrder.Id, 100, 10);
+
+        _orderRepositoryMock.Setup(x => x.GetAsync(buyOrder.Id, It.IsAny<CancellationToken>())).ReturnsAsync(buyOrder);
+        _orderRepositoryMock.Setup(x => x.GetAsync(sellOrder.Id, It.IsAny<CancellationToken>())).ReturnsAsync(sellOrder);
+
+        // Act
+        Result<Trade> result = await _tradeExecutor.ExecuteAsync(proposal, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        _orderRepositoryMock.Verify(x => x.CancelAsync(buyOrder.Id, It.IsAny<CancellationToken>()), Times.Never);
+        _orderRepositoryMock.Verify(x => x.CancelAsync(sellOrder.Id, It.IsAny<CancellationToken>()), Times.Once);
+        _orderBookRepositoryMock.Verify(x => x.CancelOrder(buyOrder.Id), Times.Never);
+        _orderBookRepositoryMock.Verify(x => x.CancelOrder(sellOrder.Id), Times.Once);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_Should_NotFillBeyondOrderQuantity_WhenProposalQuantityExceedsRemaining()
+    {
+        // Arrange
+        Order buyOrder = CreateOrder(quantity: 10, filledQuantity: 8);
+        Order sellOrder = CreateOrder(userId: Guid.NewGuid(), stockId: buyOrder.StockId, quantity: 10, filledQuantity: 8);
+        User buyer = CreateUser(id: buyOrder.UserId, balance: 2000);
+        User seller = CreateUser(id: sellOrder.UserId, balance: 500);
+
+        TradeProposal proposal = CreateTradeProposal(buyOrder.StockId, buyOrder.Id, sellOrder.Id, 100, 5);
+
+        _orderRepositoryMock.Setup(x => x.GetAsync(buyOrder.Id, It.IsAny<CancellationToken>())).ReturnsAsync(buyOrder);
+        _orderRepositoryMock.Setup(x => x.GetAsync(sellOrder.Id, It.IsAny<CancellationToken>())).ReturnsAsync(sellOrder);
+        _userRepositoryMock.Setup(x => x.GetAsync(buyOrder.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(buyer);
+        _userRepositoryMock.Setup(x => x.GetAsync(sellOrder.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(seller);
+
+        // Act
+        Result<Trade> result = await _tradeExecutor.ExecuteAsync(proposal, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+
+        Assert.Equal(10, buyOrder.FilledQuantity);
+        Assert.Equal(10, sellOrder.FilledQuantity);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_Should_PartiallyFillOrders_WhenQuantityLessThanOrder()
     {
         // Arrange
@@ -264,6 +519,40 @@ public class TradeExecutorTests
         Assert.True(result.IsSuccess);
         Assert.Equal(10, buyOrder.FilledQuantity);
         Assert.Equal(10, sellOrder.FilledQuantity);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_Should_ReturnTradeWithCorrectProperties_WhenTradeExecuted()
+    {
+        // Arrange
+        var stockId = Guid.NewGuid();
+        Order buyOrder = CreateOrder(stockId: stockId);
+        Order sellOrder = CreateOrder(userId: Guid.NewGuid(), stockId: stockId);
+        User buyer = CreateUser(id: buyOrder.UserId, balance: 2000);
+        User seller = CreateUser(id: sellOrder.UserId, balance: 500);
+        decimal price = 150;
+        int quantity = 5;
+        TradeProposal proposal = CreateTradeProposal(stockId, buyOrder.Id, sellOrder.Id, price, quantity);
+
+        _orderRepositoryMock.Setup(x => x.GetAsync(buyOrder.Id, It.IsAny<CancellationToken>())).ReturnsAsync(buyOrder);
+        _orderRepositoryMock.Setup(x => x.GetAsync(sellOrder.Id, It.IsAny<CancellationToken>())).ReturnsAsync(sellOrder);
+        _userRepositoryMock.Setup(x => x.GetAsync(buyOrder.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(buyer);
+        _userRepositoryMock.Setup(x => x.GetAsync(sellOrder.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(seller);
+
+        // Act
+        Result<Trade> result = await _tradeExecutor.ExecuteAsync(proposal, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Trade trade = result.Value;
+        Assert.Equal(stockId, trade.StockId);
+        Assert.Equal(buyOrder.Id, trade.BuyOrderId);
+        Assert.Equal(sellOrder.Id, trade.SellOrderId);
+        Assert.Equal(buyer.Id, trade.BuyerId);
+        Assert.Equal(seller.Id, trade.SellerId);
+        Assert.Equal(price, trade.Price);
+        Assert.Equal(quantity, trade.Quantity);
+        Assert.Equal(price * quantity, trade.TotalValue);
     }
 
     [Fact]
@@ -331,5 +620,58 @@ public class TradeExecutorTests
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             _tradeExecutor.ExecuteAsync(proposal, CancellationToken.None)
         );
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_Should_UpdateOrderBook_WhenTradeExecuted()
+    {
+        // Arrange
+        Order buyOrder = CreateOrder();
+        Order sellOrder = CreateOrder(userId: Guid.NewGuid(), stockId: buyOrder.StockId);
+        User buyer = CreateUser(id: buyOrder.UserId, balance: 2000);
+        User seller = CreateUser(id: sellOrder.UserId, balance: 500);
+        TradeProposal proposal = CreateTradeProposal(buyOrder.StockId, buyOrder.Id, sellOrder.Id, 100, 10);
+
+        _orderRepositoryMock.Setup(x => x.GetAsync(buyOrder.Id, It.IsAny<CancellationToken>())).ReturnsAsync(buyOrder);
+        _orderRepositoryMock.Setup(x => x.GetAsync(sellOrder.Id, It.IsAny<CancellationToken>())).ReturnsAsync(sellOrder);
+        _userRepositoryMock.Setup(x => x.GetAsync(buyOrder.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(buyer);
+        _userRepositoryMock.Setup(x => x.GetAsync(sellOrder.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(seller);
+
+        // Act
+        Result<Trade> result = await _tradeExecutor.ExecuteAsync(proposal, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        _orderBookRepositoryMock.Verify(x => x.UpdateOrderFilledQuantity(buyOrder.Id, 10), Times.Once);
+        _orderBookRepositoryMock.Verify(x => x.UpdateOrderFilledQuantity(sellOrder.Id, 10), Times.Once);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_Should_UpdateUserBalancesCorrectly_WhenTradeExecuted()
+    {
+        // Arrange
+        Order buyOrder = CreateOrder(quantity: 10, price: 100);
+        Order sellOrder = CreateOrder(userId: Guid.NewGuid(), stockId: buyOrder.StockId, quantity: 10, price: 100);
+        User buyer = CreateUser(id: buyOrder.UserId, balance: 1500);
+        User seller = CreateUser(id: sellOrder.UserId, balance: 200);
+        TradeProposal proposal = CreateTradeProposal(buyOrder.StockId, buyOrder.Id, sellOrder.Id, 100, 10);
+
+        _orderRepositoryMock.Setup(x => x.GetAsync(buyOrder.Id, It.IsAny<CancellationToken>())).ReturnsAsync(buyOrder);
+        _orderRepositoryMock.Setup(x => x.GetAsync(sellOrder.Id, It.IsAny<CancellationToken>())).ReturnsAsync(sellOrder);
+        _userRepositoryMock.Setup(x => x.GetAsync(buyOrder.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(buyer);
+        _userRepositoryMock.Setup(x => x.GetAsync(sellOrder.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(seller);
+
+        decimal expectedBuyerBalance = buyer.CurrentBalance - proposal.Price * proposal.Quantity;
+        decimal expectedSellerBalance = seller.CurrentBalance + proposal.Price * proposal.Quantity;
+
+        // Act
+        Result<Trade> result = await _tradeExecutor.ExecuteAsync(proposal, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.Equal(expectedBuyerBalance, buyer.CurrentBalance);
+        Assert.Equal(expectedSellerBalance, seller.CurrentBalance);
+        _userRepositoryMock.Verify(x => x.UpdateBalanceAsync(buyer.Id, expectedBuyerBalance, It.IsAny<CancellationToken>()), Times.Once);
+        _userRepositoryMock.Verify(x => x.UpdateBalanceAsync(seller.Id, expectedSellerBalance, It.IsAny<CancellationToken>()), Times.Once);
     }
 }
