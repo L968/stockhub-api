@@ -21,6 +21,10 @@ internal sealed class OrderValidator : AbstractValidator<Order>
             .GreaterThan(0)
             .WithMessage("Quantity must be greater than zero");
 
+        RuleFor(o => o)
+            .Must(o => o.FilledQuantity < o.Quantity)
+            .WithMessage("Cannot process fully filled order");
+
         RuleFor(o => o.IsCancelled)
             .Equal(false)
             .WithMessage("Cannot process cancelled order");

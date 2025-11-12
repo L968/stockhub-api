@@ -1,6 +1,7 @@
 ﻿using FluentValidation.Results;
 using Microsoft.Extensions.Logging;
 using Stockhub.Common.Domain.Results;
+using Stockhub.Consumers.MatchingEngine.Application.Cache;
 using Stockhub.Consumers.MatchingEngine.Application.Queues;
 using Stockhub.Consumers.MatchingEngine.Application.Validators;
 using Stockhub.Consumers.MatchingEngine.Domain.Entities;
@@ -12,9 +13,10 @@ namespace Stockhub.Consumers.MatchingEngine.Application.Services;
 internal sealed class MatchingEngineService(
     IOrderBookRepository orderBookRepository,
     IOrderRepository orderRepository,
-    IUserRepository userRepository,
+    ITradeExecutor tradeExecutor,
     IDirtyQueue dirtyQueue,
     OrderValidator orderValidator,
+    IProcessedOrderCache processedOrderCache,
     ILogger<MatchingEngineService> logger
 ) : IMatchingEngineService
 {
@@ -34,6 +36,12 @@ internal sealed class MatchingEngineService(
 
     public async Task EnqueueOrderAsync(Order incomingOrder, CancellationToken cancellationToken)
     {
+        if (processedOrderCache.Exists(incomingOrder.Id))
+        {
+            logger.LogDebug("Order {OrderId} ignored (already processed)", incomingOrder.Id);
+            return;
+        }
+
         Result validation = await ValidateOrderAsync(incomingOrder, cancellationToken);
         if (validation.IsFailure)
         {
@@ -76,7 +84,7 @@ internal sealed class MatchingEngineService(
 
             foreach (TradeProposal proposal in proposals)
             {
-                Result<Trade> result = await TryExecuteTradeAsync(proposal, cancellationToken);
+                Result<Trade> result = await tradeExecutor.ExecuteAsync(proposal, cancellationToken);
 
                 if (result.IsFailure)
                 {
@@ -106,7 +114,9 @@ internal sealed class MatchingEngineService(
             return Result.Success();
         }
 
-        ValidationError validationError = MapToValidationError(validation);
+        var validationError = new ValidationError(
+            validation.Errors.Select(f => Error.Problem(f.ErrorCode ?? f.PropertyName, f.ErrorMessage)).ToArray()
+        );
 
         logger.LogWarning(
             "Invalid order {OrderId} (User {UserId}, Stock {StockId}): {Errors}",
@@ -117,82 +127,9 @@ internal sealed class MatchingEngineService(
         return Result.Failure(validationError);
     }
 
-    private async Task<Result<Trade>> TryExecuteTradeAsync(TradeProposal proposal, CancellationToken cancellationToken)
-    {
-        (Order buyOrder, Order sellOrder, User buyer, User seller) = await LoadEntitiesAsync(proposal, cancellationToken);
-
-        Result buyValidation = await ValidateOrderAsync(buyOrder, cancellationToken);
-        if (buyValidation.IsFailure)
-        {
-            await CommitCancelOrder(buyOrder, cancellationToken);
-            return buyValidation;
-        }
-
-        Result sellValidation = await ValidateOrderAsync(sellOrder, cancellationToken);
-        if (sellValidation.IsFailure)
-        {
-            await CommitCancelOrder(sellOrder, cancellationToken);
-            return sellValidation;
-        }
-
-        var trade = new Trade(proposal, buyer, seller);
-
-        await PersistExecutedTradeAsync(trade, buyOrder, sellOrder, buyer, seller, cancellationToken);
-
-        logger.LogInformation(
-            "Trade executed: {StockId} | Buy {BuyOrderId} ↔ Sell {SellOrderId} @ {Price} x {Quantity}",
-            trade.StockId, trade.BuyOrderId, trade.SellOrderId, trade.Price, trade.Quantity
-        );
-
-        return trade;
-    }
-
-    private async Task<(Order buyOrder, Order sellOrder, User buyer, User seller)> LoadEntitiesAsync(TradeProposal proposal, CancellationToken cancellationToken)
-    {
-        Order buyOrder = await orderRepository.GetAsync(proposal.BuyOrderId, cancellationToken) ?? throw new InvalidOperationException("Buy order not found");
-        Order sellOrder = await orderRepository.GetAsync(proposal.SellOrderId, cancellationToken) ?? throw new InvalidOperationException("Sell order not found");
-        User buyer = await userRepository.GetAsync(buyOrder.UserId, cancellationToken) ?? throw new InvalidOperationException("Buyer not found");
-        User seller = await userRepository.GetAsync(sellOrder.UserId, cancellationToken) ?? throw new InvalidOperationException("Seller not found");
-
-        return (buyOrder, sellOrder, buyer, seller);
-    }
-
-    private async Task PersistExecutedTradeAsync(
-        Trade trade,
-        Order buyOrder,
-        Order sellOrder,
-        User buyer,
-        User seller,
-        CancellationToken cancellationToken)
-    {
-        buyOrder.Fill(trade.Quantity);
-        sellOrder.Fill(trade.Quantity);
-        await orderRepository.UpdateFilledQuantityAsync(buyOrder.Id, buyOrder.FilledQuantity, cancellationToken);
-        await orderRepository.UpdateFilledQuantityAsync(sellOrder.Id, sellOrder.FilledQuantity, cancellationToken);
-
-        buyer.Debit(trade.TotalValue);
-        seller.Credit(trade.TotalValue);
-        await userRepository.UpdateBalanceAsync(buyer.Id, buyer.CurrentBalance, cancellationToken);
-        await userRepository.UpdateBalanceAsync(seller.Id, seller.CurrentBalance, cancellationToken);
-
-        await orderRepository.AddTradeAsync(trade, cancellationToken);
-
-        orderBookRepository.UpdateOrderFilledQuantity(buyOrder.Id, buyOrder.FilledQuantity);
-        orderBookRepository.UpdateOrderFilledQuantity(sellOrder.Id, sellOrder.FilledQuantity);
-    }
-
     private async Task CommitCancelOrder(Order order, CancellationToken cancellationToken)
     {
         await orderRepository.CancelAsync(order.Id, cancellationToken);
         orderBookRepository.CancelOrder(order.Id);
-    }
-
-    private static ValidationError MapToValidationError(ValidationResult validation)
-    {
-        Error[] errors = validation.Errors
-            .Select(f => Error.Problem(f.ErrorCode ?? f.PropertyName, f.ErrorMessage))
-            .ToArray();
-
-        return new ValidationError(errors);
     }
 }

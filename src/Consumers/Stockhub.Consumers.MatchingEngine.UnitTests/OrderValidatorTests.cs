@@ -118,6 +118,7 @@ public class OrderValidatorTests
         // Arrange
         var userId = Guid.NewGuid();
         Order order = CreateOrder(side: OrderSide.Buy, userId: userId);
+
         _userRepositoryMock
             .Setup(r => r.HasSufficientBalanceAsync(userId, order.Price * order.Quantity, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
