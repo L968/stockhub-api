@@ -64,7 +64,22 @@ internal sealed class GetMyOrdersHandler(
 
         if (request.Status.HasValue)
         {
-            query = query.Where(o => o.Status == request.Status.Value);
+            query = request.Status.Value switch
+            {
+                OrderStatus.Cancelled =>
+                    query.Where(o => o.IsCancelled),
+
+                OrderStatus.Pending =>
+                    query.Where(o => !o.IsCancelled && o.FilledQuantity == 0),
+
+                OrderStatus.PartiallyFilled =>
+                    query.Where(o => !o.IsCancelled && o.FilledQuantity > 0 && o.FilledQuantity < o.Quantity),
+
+                OrderStatus.Filled =>
+                    query.Where(o => !o.IsCancelled && o.FilledQuantity == o.Quantity),
+
+                _ => query
+            };
         }
 
         return query;

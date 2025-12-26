@@ -97,6 +97,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stockhub.Consumers.Matching
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stockhub.Consumers.MatchingEngine.UnitTests", "src\Consumers\Stockhub.Consumers.MatchingEngine.UnitTests\Stockhub.Consumers.MatchingEngine.UnitTests.csproj", "{E905F78A-11D4-4DFF-BB57-60ECF1E2B9DD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stockhub.Consumers.PortfolioUpdater", "src\Consumers\Stockhub.Consumers.PortfolioUpdater\Stockhub.Consumers.PortfolioUpdater.csproj", "{17E07C74-1670-41E0-A31F-E7971546653C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -219,6 +221,10 @@ Global
 		{E905F78A-11D4-4DFF-BB57-60ECF1E2B9DD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E905F78A-11D4-4DFF-BB57-60ECF1E2B9DD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E905F78A-11D4-4DFF-BB57-60ECF1E2B9DD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{17E07C74-1670-41E0-A31F-E7971546653C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{17E07C74-1670-41E0-A31F-E7971546653C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{17E07C74-1670-41E0-A31F-E7971546653C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{17E07C74-1670-41E0-A31F-E7971546653C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -263,6 +269,7 @@ Global
 		{2DAE39F3-5888-47BF-A23E-7D1B182C32A9} = {166CC261-E52F-4EF6-A347-D5CB12C1E28D}
 		{3DDCCAFB-B84C-0AE2-7BA6-5B53E7FC961C} = {00379551-9DEC-4708-8395-FDC41DBEE522}
 		{E905F78A-11D4-4DFF-BB57-60ECF1E2B9DD} = {00379551-9DEC-4708-8395-FDC41DBEE522}
+		{17E07C74-1670-41E0-A31F-E7971546653C} = {00379551-9DEC-4708-8395-FDC41DBEE522}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {80DA3F9A-1C03-4B39-B34C-BE190B7C7983}

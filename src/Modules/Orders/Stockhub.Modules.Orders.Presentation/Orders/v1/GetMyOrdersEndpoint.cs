@@ -1,4 +1,5 @@
-﻿using Stockhub.Common.Application;
+﻿using Microsoft.Extensions.Primitives;
+using Stockhub.Common.Application;
 using Stockhub.Modules.Orders.Application.Features.Orders.GetMyOrders;
 using Stockhub.Modules.Orders.Domain.Orders;
 
@@ -16,10 +17,17 @@ internal sealed class GetMyOrdersEndpoint : IEndpoint
                 DateTime? endDate,
                 OrderStatus? status,
                 ISender sender,
+                HttpContext context,
                 CancellationToken cancellationToken) =>
             {
+                if (!context.Request.Headers.TryGetValue("X-User-Id", out StringValues userIdHeader)
+                    || !Guid.TryParse(userIdHeader, out Guid userId))
+                {
+                    return Results.BadRequest(new { error = "Missing or invalid X-User-Id header." });
+                }
+
                 var query = new GetMyOrdersQuery(
-                    Guid.CreateVersion7(),
+                    userId,
                     page,
                     pageSize,
                     startDate,

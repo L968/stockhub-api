@@ -1,13 +1,13 @@
 ﻿using Microsoft.Extensions.Primitives;
-using Stockhub.Modules.Users.Application.Features.GetCurrentUser;
+using Stockhub.Modules.Orders.Application.Features.Portfolio.GetMyPortfolio;
 
-namespace Stockhub.Modules.Users.Presentation.Users.v1;
+namespace Stockhub.Modules.Orders.Presentation.Portfolio.v1;
 
-internal sealed class GetCurrentUserEndpoint : IEndpoint
+internal sealed class GetMyPortfolioEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapGet("users/me",
+        app.MapGet("portfolio/me",
             async (
                 ISender sender,
                 HttpContext context,
@@ -19,15 +19,11 @@ internal sealed class GetCurrentUserEndpoint : IEndpoint
                     return Results.BadRequest(new { error = "Missing or invalid X-User-Id header." });
                 }
 
-                var query = new GetCurrentUserQuery(userId);
-                Result<GetUserResponse> result = await sender.Send(query, cancellationToken);
+                Result<GetMyPortfolioResponse> result = await sender.Send(new GetMyPortfolioQuery(userId), cancellationToken);
 
-                return result.Match(
-                    onSuccess: response => Results.Ok(response),
-                    onFailure: ApiResults.Problem
-                );
+                return result.Match(Results.Ok, ApiResults.Problem);
             })
-        .WithTags(Tags.Users)
+        .WithTags(Tags.Portfolio)
         .MapToApiVersion(1);
     }
 }

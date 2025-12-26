@@ -43,6 +43,17 @@ builder.Services.AddVersioning();
 
 builder.Host.AddSerilogLogging();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("Policy", policy =>
+    {
+        policy.WithOrigins("http://localhost:5173")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
 WebApplication app = builder.Build();
 
 app.UseSerilogRequestLogging();
@@ -59,5 +70,7 @@ if (app.Environment.IsDevelopment())
 app.UseExceptionHandler(o => { });
 
 app.UseHttpsRedirection();
+
+app.UseCors("Policy");
 
 await app.RunAsync();

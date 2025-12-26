@@ -2,6 +2,5 @@
 
 public sealed record CreateUserCommand(
     string Email,
-    string Password,
     string FullName
 ) : IRequest<Result<Guid>>;

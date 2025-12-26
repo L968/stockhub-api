@@ -24,5 +24,8 @@ internal sealed class PortfolioEntryConfiguration : IEntityTypeConfiguration<Por
                .WithMany(s => s.PortfolioEntries)
                .HasForeignKey(p => p.StockId)
                .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(p => new { p.UserId, p.StockId })
+            .IsUnique();
     }
 }

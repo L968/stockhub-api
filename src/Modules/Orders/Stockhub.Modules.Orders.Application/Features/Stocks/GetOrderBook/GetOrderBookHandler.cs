@@ -14,7 +14,7 @@ internal sealed class GetOrderBookHandler(
     {
         List<Order> stockOrders = await dbContext.Orders
             .AsNoTracking()
-            .Where(o => o.Status == OrderStatus.Pending && o.Stock.Symbol == request.Symbol)
+            .Where(o => o.Quantity != o.FilledQuantity && o.Stock.Symbol == request.Symbol && !o.IsCancelled)
             .ToListAsync(cancellationToken);
 
         if (!stockOrders.Any())

@@ -13,6 +13,12 @@ public static class UserErrors
     public static Error EmailAlreadyExists =>
         Error.Conflict(
             "User.EmailAlreadyExists",
-            $"Thi email is already registered."
+            "This email is already registered."
+        );
+
+    public static Error InvalidCredentials =>
+        Error.NotFound(
+            "User.InvalidCredentials",
+            "Invalid credentials."
         );
 }
