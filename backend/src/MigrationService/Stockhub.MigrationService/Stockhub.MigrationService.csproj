@@ -12,4 +12,8 @@
     <ProjectReference Include="..\..\Modules\Users\Stockhub.Modules.Users.Infrastructure\Stockhub.Modules.Users.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="..\..\..\database\seed.sql" Link="database\seed.sql" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

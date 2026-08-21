@@ -5,7 +5,7 @@ import { useAuth } from './AuthContext';
 
 export function AuthPage() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState('demo@stockhub.dev');
   const [fullName, setFullName] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);

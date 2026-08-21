@@ -23,6 +23,8 @@ dotnet run --project aspire/Stockhub.Aspire/Stockhub.Aspire.AppHost
 
 Aspire starts PostgreSQL, RabbitMQ, migrations, the API, and the Matching Engine. Endpoints and logs are available in the Aspire dashboard.
 
+The Migration Service then applies [`database/seed.sql`](database/seed.sql). The script is transactional and idempotent, and creates the `demo@stockhub.dev` account, eight stocks, market-maker liquidity, portfolio positions, open orders, and historical trades.
+
 ## Test
 
 ```bash

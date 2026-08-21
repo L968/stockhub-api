@@ -31,6 +31,10 @@ npm run dev
 
 Copy `frontend/.env.example` to `frontend/.env.local` when running the frontend outside Aspire.
 
+## Demo environment
+
+The Migration Service applies [`backend/database/seed.sql`](backend/database/seed.sql) after all migrations. Sign in with `demo@stockhub.dev` to use a ready-to-trade environment with eight stocks, populated order books, a portfolio, and trading history.
+
 ## License
 
 [MIT](LICENSE.txt)

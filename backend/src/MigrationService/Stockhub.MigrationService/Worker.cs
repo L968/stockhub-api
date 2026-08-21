@@ -34,8 +34,9 @@ internal sealed class Worker(
             {
                 await EnsureDatabaseAsync(dbContext, stoppingToken);
                 await RunMigrationAsync(dbContext, stoppingToken);
-                await SeedDataAsync(dbContext, stoppingToken);
             }
+
+            await SeedDataAsync(dbContexts.OfType<OrdersDbContext>().Single(), stoppingToken);
         }
         catch (Exception ex)
         {
@@ -67,10 +68,7 @@ internal sealed class Worker(
         IExecutionStrategy strategy = dbContext.Database.CreateExecutionStrategy();
         await strategy.ExecuteAsync(async () =>
         {
-            // Run migration in a transaction to avoid partial migration if it fails.
-            //await using IDbContextTransaction transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken)
             await dbContext.Database.MigrateAsync(cancellationToken);
-            //await transaction.CommitAsync(cancellationToken)
         });
     }
 
@@ -79,10 +77,9 @@ internal sealed class Worker(
         IExecutionStrategy strategy = dbContext.Database.CreateExecutionStrategy();
         await strategy.ExecuteAsync(async () =>
         {
-            // Seed the database
-            await using IDbContextTransaction transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
-            await dbContext.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
+            string seedPath = Path.Combine(AppContext.BaseDirectory, "database", "seed.sql");
+            string seedSql = await File.ReadAllTextAsync(seedPath, cancellationToken);
+            await dbContext.Database.ExecuteSqlRawAsync(seedSql, cancellationToken);
         });
     }
 }
