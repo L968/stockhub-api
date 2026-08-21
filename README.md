@@ -1,39 +1,33 @@
 # Stockhub
 
-Simulador de mercado de ativos criado como projeto de portfólio. A aplicação permite cadastrar usuários e ativos, enviar bids e offers, consultar o order book e registrar trades e posições.
+Monorepo do simulador de mercado de ativos.
 
-## Stack
+## Estrutura
 
-- .NET 9 e ASP.NET Core
-- PostgreSQL
-- RabbitMQ Super Streams e Transactional Outbox
-- .NET Aspire para orquestração local
-- Entity Framework Core e Dapper
-- xUnit e testes arquiteturais
+- `backend/`: API .NET, módulos, Matching Engine, migrations, Aspire e testes.
+- `frontend/`: aplicação React + TypeScript + Vite.
 
-Veja [ARCHITECTURE.md](ARCHITECTURE.md) para o mapa do sistema e as decisões atuais.
-
-## Executar
-
-Pré-requisitos: .NET 9 SDK e Docker compatível com .NET Aspire.
+## Backend
 
 ```bash
-dotnet run --project aspire/Stockhub.Aspire/Stockhub.Aspire.AppHost
+dotnet run --project backend/aspire/Stockhub.Aspire/Stockhub.Aspire.AppHost
 ```
-
-O Aspire inicia PostgreSQL, RabbitMQ, migrations, API e Matching Engine. Os endpoints e logs ficam disponíveis no dashboard do Aspire.
-
-## Testar
 
 ```bash
-dotnet test Stockhub.slnx
+dotnet test backend/Stockhub.slnx
 ```
 
-Os testes de integração usam Testcontainers e exigem Docker em execução.
+Veja [a documentação da arquitetura](backend/ARCHITECTURE.md).
 
-## Identificação de usuário
+## Frontend
 
-Os endpoints autenticados usam o header `X-User-Id`. Isso é uma simplificação intencional do projeto; não representa autenticação pronta para produção.
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Copie `frontend/.env.example` para `frontend/.env` quando executar o frontend fora do Aspire.
 
 ## Licença
 
