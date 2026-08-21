@@ -8,7 +8,7 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
 {
     public void Configure(EntityTypeBuilder<User> builder)
     {
-        builder.ToTable("mv_user");
+        builder.ToView("user_view");
 
         builder.HasKey(u => u.Id);
 
@@ -19,14 +19,5 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.CreatedAtUtc).HasColumnName("created_at");
         builder.Property(u => u.UpdatedAtUtc).HasColumnName("updated_at");
 
-        builder.HasMany(u => u.Orders)
-               .WithOne()
-               .HasForeignKey(o => o.UserId)
-               .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasMany(u => u.PortfolioEntries)
-               .WithOne()
-               .HasForeignKey(p => p.UserId)
-               .OnDelete(DeleteBehavior.Restrict);
     }
 }

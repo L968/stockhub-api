@@ -7,6 +7,7 @@ using Stockhub.Modules.Orders.Domain.PortfolioEntries;
 using Stockhub.Modules.Orders.Domain.Stocks;
 using Stockhub.Modules.Orders.Domain.Trades;
 using Stockhub.Modules.Orders.Domain.Users;
+using Stockhub.Modules.Orders.Infrastructure.Messaging;
 
 namespace Stockhub.Modules.Orders.Infrastructure.Database;
 
@@ -17,6 +18,7 @@ public sealed class OrdersDbContext(DbContextOptions<OrdersDbContext> options) :
     public DbSet<Stock> Stocks { get; set; }
     public DbSet<Trade> Trades { get; set; }
     public DbSet<User> Users { get; set; }
+    internal DbSet<IntegrationOutboxMessage> IntegrationOutbox { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

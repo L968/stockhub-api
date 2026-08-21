@@ -29,16 +29,4 @@ internal sealed class Trade
         ExecutedAt = DateTime.UtcNow;
     }
 
-    public Trade(TradeProposal proposal, User buyer, User seller)
-        : this(
-            stockId: proposal.StockId,
-            buyerId: buyer.Id,
-            sellerId: seller.Id,
-            buyOrderId: proposal.BuyOrderId,
-            sellOrderId: proposal.SellOrderId,
-            price: proposal.Price,
-            quantity: proposal.Quantity
-        )
-    {
-    }
 }

@@ -5,9 +5,9 @@ namespace Stockhub.Consumers.MatchingEngine.Infrastructure.Database.Interfaces;
 
 internal interface IOrderBookRepository
 {
-    void BuildFromOrders(IEnumerable<Order> orders);
-
-    void AddOrder(Order order);
+    void ReplacePartition(string partition, IEnumerable<Order> orders);
+    void RemovePartition(string partition);
+    void AddOrder(string partition, Order order);
     void CancelOrder(Guid orderId);
     void UpdateOrderFilledQuantity(Guid orderId, int filledQuantity);
     void RemoveOrder(Guid orderId);

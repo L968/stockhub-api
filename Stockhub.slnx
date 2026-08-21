@@ -1,0 +1,63 @@
+<Solution>
+  <Folder Name="/aspire/">
+    <Project Path="aspire/Stockhub.Aspire/Stockhub.Aspire.AppHost/Stockhub.Aspire.AppHost.csproj" />
+    <Project Path="aspire/Stockhub.Aspire/Stockhub.Aspire.ServiceDefaults/Stockhub.Aspire.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".gitignore" />
+    <File Path="Directory.Build.props" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Api/">
+    <Project Path="src/Api/Stockhub.Api/Stockhub.Api.csproj" />
+  </Folder>
+  <Folder Name="/src/Common/">
+    <Project Path="src/Common/Stockhub.Common.Application/Stockhub.Common.Application.csproj" />
+    <Project Path="src/Common/Stockhub.Common.Domain/Stockhub.Common.Domain.csproj" />
+    <Project Path="src/Common/Stockhub.Common.Infrastructure/Stockhub.Common.Infrastructure.csproj" />
+    <Project Path="src/Common/Stockhub.Common.Messaging/Stockhub.Common.Messaging.csproj" />
+    <Project Path="src/Common/Stockhub.Common.Presentation/Stockhub.Common.Presentation.csproj" />
+  </Folder>
+  <Folder Name="/src/Consumers/">
+    <Project Path="src/Consumers/Stockhub.Consumers.MatchingEngine.UnitTests/Stockhub.Consumers.MatchingEngine.UnitTests.csproj" />
+    <Project Path="src/Consumers/Stockhub.Consumers.MatchingEngine/Stockhub.Consumers.MatchingEngine.csproj" />
+  </Folder>
+  <Folder Name="/src/MigrationService/">
+    <Project Path="src/MigrationService/Stockhub.MigrationService/Stockhub.MigrationService.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/" />
+  <Folder Name="/src/Modules/Orders/">
+    <Project Path="src/Modules/Orders/Stockhub.Modules.Orders.Application/Stockhub.Modules.Orders.Application.csproj" />
+    <Project Path="src/Modules/Orders/Stockhub.Modules.Orders.Domain/Stockhub.Modules.Orders.Domain.csproj" />
+    <Project Path="src/Modules/Orders/Stockhub.Modules.Orders.Infrastructure/Stockhub.Modules.Orders.Infrastructure.csproj" />
+    <Project Path="src/Modules/Orders/Stockhub.Modules.Orders.Presentation/Stockhub.Modules.Orders.Presentation.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Orders/tests/">
+    <Project Path="src/Modules/Orders/Stockhub.Modules.Orders.ArchitectureTests/Stockhub.Modules.Orders.ArchitectureTests.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Stocks/">
+    <Project Path="src/Modules/Stocks/Stockhub.Modules.Stocks.Application/Stockhub.Modules.Stocks.Application.csproj" />
+    <Project Path="src/Modules/Stocks/Stockhub.Modules.Stocks.Domain/Stockhub.Modules.Stocks.Domain.csproj" />
+    <Project Path="src/Modules/Stocks/Stockhub.Modules.Stocks.Infrastructure/Stockhub.Modules.Stocks.Infrastructure.csproj" />
+    <Project Path="src/Modules/Stocks/Stockhub.Modules.Stocks.Presentation/Stockhub.Modules.Stocks.Presentation.csproj" />
+    <Project Path="src/Modules/Stocks/Stockhub.Modules.Stocks.PublicApi/Stockhub.Modules.Stocks.PublicApi.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Stocks/tests/">
+    <Project Path="src/Modules/Stocks/Stockhub.Modules.Stocks.ArchitectureTests/Stockhub.Modules.Stocks.ArchitectureTests.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Users/">
+    <Project Path="src/Modules/Users/Stockhub.Modules.Users.Application/Stockhub.Modules.Users.Application.csproj" />
+    <Project Path="src/Modules/Users/Stockhub.Modules.Users.Domain/Stockhub.Modules.Users.Domain.csproj" />
+    <Project Path="src/Modules/Users/Stockhub.Modules.Users.Infrastructure/Stockhub.Modules.Users.Infrastructure.csproj" />
+    <Project Path="src/Modules/Users/Stockhub.Modules.Users.Presentation/Stockhub.Modules.Users.Presentation.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Users/tests/">
+    <Project Path="src/Modules/Users/Stockhub.Modules.Users.ArchitectureTests/Stockhub.Modules.Users.ArchitectureTests.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Stockhub.ArchitectureTests/Stockhub.ArchitectureTests.csproj" />
+    <Project Path="tests/Stockhub.IntegrationTests/Stockhub.IntegrationTests.csproj" />
+  </Folder>
+</Solution>

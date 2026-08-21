@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using Stockhub.Consumers.MatchingEngine.Domain.Entities;
 using Stockhub.Consumers.MatchingEngine.Domain.Enums;
 using Stockhub.Consumers.MatchingEngine.Domain.ValueObjects;
@@ -8,26 +8,54 @@ namespace Stockhub.Consumers.MatchingEngine.Infrastructure.Database;
 
 internal sealed class OrderBookRepository : IOrderBookRepository
 {
-    private readonly ConcurrentDictionary<Guid, Order> _orders = new();
+    private readonly ConcurrentDictionary<Guid, ConcurrentDictionary<Guid, Order>> _books = new();
+    private readonly ConcurrentDictionary<Guid, Guid> _stockByOrder = new();
+    private readonly ConcurrentDictionary<string, ConcurrentDictionary<Guid, byte>> _stocksByPartition = new();
 
-    public void BuildFromOrders(IEnumerable<Order> orders)
+    public void ReplacePartition(string partition, IEnumerable<Order> orders)
     {
-        _orders.Clear();
+        RemovePartition(partition);
 
         foreach (Order order in orders)
         {
-            _orders[order.Id] = order;
+            AddOrder(partition, order);
         }
     }
 
-    public void AddOrder(Order order)
+    public void RemovePartition(string partition)
     {
-        _orders[order.Id] = order;
+        if (!_stocksByPartition.TryRemove(partition, out ConcurrentDictionary<Guid, byte>? stocks))
+        {
+            return;
+        }
+
+        foreach (Guid stockId in stocks.Keys)
+        {
+            if (!_books.TryRemove(stockId, out ConcurrentDictionary<Guid, Order>? orders))
+            {
+                continue;
+            }
+
+            foreach (Guid orderId in orders.Keys)
+            {
+                _stockByOrder.TryRemove(orderId, out _);
+            }
+        }
+    }
+
+    public void AddOrder(string partition, Order order)
+    {
+        ConcurrentDictionary<Guid, Order> book = _books.GetOrAdd(order.StockId, _ => new());
+        book[order.Id] = order;
+        _stockByOrder[order.Id] = order.StockId;
+
+        ConcurrentDictionary<Guid, byte> stocks = _stocksByPartition.GetOrAdd(partition, _ => new());
+        stocks.TryAdd(order.StockId, 0);
     }
 
     public void CancelOrder(Guid orderId)
     {
-        if (_orders.TryGetValue(orderId, out Order? order))
+        if (TryGetOrder(orderId, out Order? order) && order is not null)
         {
             order.Cancel();
             RemoveOrder(orderId);
@@ -36,33 +64,47 @@ internal sealed class OrderBookRepository : IOrderBookRepository
 
     public void UpdateOrderFilledQuantity(Guid orderId, int filledQuantity)
     {
-        if (_orders.TryGetValue(orderId, out Order? order))
+        if (!TryGetOrder(orderId, out Order? order) || order is null)
         {
-            order.FilledQuantity = filledQuantity;
+            return;
+        }
 
-            if (order.Status == OrderStatus.Filled)
-            {
-                RemoveOrder(orderId);
-            }
+        order.FilledQuantity = filledQuantity;
+
+        if (order.Status == OrderStatus.Filled)
+        {
+            RemoveOrder(orderId);
         }
     }
 
     public void RemoveOrder(Guid orderId)
     {
-        _orders.TryRemove(orderId, out _);
+        if (!_stockByOrder.TryRemove(orderId, out Guid stockId)
+            || !_books.TryGetValue(stockId, out ConcurrentDictionary<Guid, Order>? book))
+        {
+            return;
+        }
+
+        book.TryRemove(orderId, out _);
     }
 
-    public bool ContainsOrder(Guid orderId)
-    {
-        return _orders.ContainsKey(orderId);
-    }
+    public bool ContainsOrder(Guid orderId) => _stockByOrder.ContainsKey(orderId);
 
     public OrderBook GetOrderBookSnapshot(Guid stockId)
     {
-        var stockOrders = _orders.Values
-            .Where(o => o.StockId == stockId)
-            .ToList();
+        List<Order> orders = _books.TryGetValue(stockId, out ConcurrentDictionary<Guid, Order>? book)
+            ? book.Values.ToList()
+            : [];
 
-        return new OrderBook(stockId, stockOrders);
+        return new OrderBook(stockId, orders);
+    }
+
+    private bool TryGetOrder(Guid orderId, out Order? order)
+    {
+        order = null;
+
+        return _stockByOrder.TryGetValue(orderId, out Guid stockId)
+            && _books.TryGetValue(stockId, out ConcurrentDictionary<Guid, Order>? book)
+            && book.TryGetValue(orderId, out order);
     }
 }

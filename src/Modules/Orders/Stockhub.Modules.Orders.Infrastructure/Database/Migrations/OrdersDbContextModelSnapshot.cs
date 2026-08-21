@@ -112,7 +112,8 @@ namespace Stockhub.Modules.Orders.Infrastructure.Database.Migrations
 
                     b.HasIndex("StockId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "StockId")
+                        .IsUnique();
 
                     b.ToTable("portfolio", "orders");
                 });
@@ -120,7 +121,6 @@ namespace Stockhub.Modules.Orders.Infrastructure.Database.Migrations
             modelBuilder.Entity("Stockhub.Modules.Orders.Domain.Stocks.Stock", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -149,7 +149,9 @@ namespace Stockhub.Modules.Orders.Infrastructure.Database.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("mv_stock", "orders");
+                    b.ToTable((string)null);
+
+                    b.ToView("stock_view", "orders");
                 });
 
             modelBuilder.Entity("Stockhub.Modules.Orders.Domain.Trades.Trade", b =>
@@ -206,7 +208,6 @@ namespace Stockhub.Modules.Orders.Infrastructure.Database.Migrations
             modelBuilder.Entity("Stockhub.Modules.Orders.Domain.Users.User", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -235,7 +236,70 @@ namespace Stockhub.Modules.Orders.Infrastructure.Database.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("mv_user", "orders");
+                    b.ToTable((string)null);
+
+                    b.ToView("user_view", "orders");
+                });
+
+            modelBuilder.Entity("Stockhub.Modules.Orders.Infrastructure.Messaging.IntegrationOutboxMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempts");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("last_error");
+
+                    b.Property<Guid?>("LockId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("lock_id");
+
+                    b.Property<DateTime?>("LockedUntilUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("locked_until");
+
+                    b.Property<DateTime>("OccurredAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("order_id");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("payload");
+
+                    b.Property<DateTime?>("PublishedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("published_at");
+
+                    b.Property<Guid>("StockId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("stock_id");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId")
+                        .IsUnique();
+
+                    b.HasIndex("PublishedAtUtc", "OccurredAtUtc");
+
+                    b.ToTable("integration_outbox", "orders");
                 });
 
             modelBuilder.Entity("Stockhub.Modules.Orders.Domain.Orders.Order", b =>
@@ -249,7 +313,7 @@ namespace Stockhub.Modules.Orders.Infrastructure.Database.Migrations
                     b.HasOne("Stockhub.Modules.Orders.Domain.Users.User", null)
                         .WithMany("Orders")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Stock");
@@ -266,7 +330,7 @@ namespace Stockhub.Modules.Orders.Infrastructure.Database.Migrations
                     b.HasOne("Stockhub.Modules.Orders.Domain.Users.User", null)
                         .WithMany("PortfolioEntries")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Stock");

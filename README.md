@@ -1,84 +1,40 @@
-# Clean Architecture .NET Template
+# Stockhub
 
-This repository provides a template for creating .NET projects using **Clean Architecture**, integrated with **Docker Compose**, **Entity Framework Core** and more. This template helps you quickly set up and organize your project with a modular structure and seamless database management.
+Simulador de mercado de ativos criado como projeto de portfólio. A aplicação permite cadastrar usuários e ativos, enviar bids e offers, consultar o order book e registrar trades e posições.
 
-## Technologies and patterns
+## Stack
 
-- [Clean Architecture](https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures#clean-architecture) Separates business logic from implementation details, promoting independence and easy maintenance.
-- [.NET Aspire](https://learn.microsoft.com/en-us/dotnet/aspire/): Pre-configured for containerization, allowing you to run the entire project with one command.
-- [PostgreSQL](https://www.postgresql.org/): The template uses PostgreSQL as the default database, with easy setup via .NET Aspire.
-- [Entity Framework Core](https://docs.microsoft.com/en-us/ef/core/): Simplified database management with Entity Framework Core, allowing you to apply and manage migrations effortlessly.
-- [Health Checks](https://www.nuget.org/packages/AspNetCore.HealthChecks.UI.Client): Integrated health checks for monitoring the application state.
-- [FluentValidation](https://fluentvalidation.net/): Provides a clean and expressive way to validate models.
-- [MediatR](https://github.com/jbogard/MediatR): Enables in-process messaging for better separation of concerns.
-- [xUnit](https://xunit.net/), [Moq](https://github.com/moq), [NetArchTest](https://github.com/BenMorris/NetArchTest): Testing libraries
+- .NET 9 e ASP.NET Core
+- PostgreSQL
+- RabbitMQ Super Streams e Transactional Outbox
+- .NET Aspire para orquestração local
+- Entity Framework Core e Dapper
+- xUnit e testes arquiteturais
 
-## Prerequisites
+Veja [ARCHITECTURE.md](ARCHITECTURE.md) para o mapa do sistema e as decisões atuais.
 
-- [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
-- [Docker](https://www.docker.com/get-started)
+## Executar
 
-## Getting Started
-
-### 1. Clone the repository
+Pré-requisitos: .NET 9 SDK e Docker compatível com .NET Aspire.
 
 ```bash
-git clone https://github.com/L968/Stockhub.git
-
-cd Stockhub
+dotnet run --project aspire/Stockhub.Aspire/Stockhub.Aspire.AppHost
 ```
 
-### 2. Install the Template
+O Aspire inicia PostgreSQL, RabbitMQ, migrations, API e Matching Engine. Os endpoints e logs ficam disponíveis no dashboard do Aspire.
 
-To install the template globally, run the following command:
+## Testar
 
 ```bash
-dotnet new --install .
+dotnet test Stockhub.slnx
 ```
 
-### 3. Create a New Project
+Os testes de integração usam Testcontainers e exigem Docker em execução.
 
-To create a new project using the Clean Architecture template, use the command:
+## Identificação de usuário
 
-```bash
-dotnet new cleanarchitecture-template -o "YourProjectName"
-```
+Os endpoints autenticados usam o header `X-User-Id`. Isso é uma simplificação intencional do projeto; não representa autenticação pronta para produção.
 
-## Running the Application
+## Licença
 
-### 1. Ensure Docker is running
-
-Before starting the application, make sure **Docker Desktop** (Windows/macOS) or the **Docker service** (Linux) is running on your system.
-
-### 2. Run the application using .NET Aspire
-
-```bash
-dotnet run --project YourProjectName.AppHost
-```
-
-### 3. Running Tests
-To run unit tests, execute:
-
-```bash
- dotnet test
-```
-
-### 4. Adding Migrations
-
-1. Set "YourProjectName.Api" as your start up project.
-2. Open the Package Manager Console.
-3. Set the default project to "YourProjectName.Infrastructure".
-4. Run the following command.
-
-```bash
-Add-Migration Init -Context AppDbContext -o Database/Migrations
-```
-
-## API Endpoints  
-Once the application is running, you can access the API via Scalar in the **YourProjectName.Api** project from the .NET Aspire dashboard.  
-
-## Contributing
-Feel free to open issues and pull requests to improve the project!
-
-## License
-This project is licensed under the [MIT License](LICENSE.txt).
+[MIT](LICENSE.txt)

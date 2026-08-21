@@ -8,7 +8,7 @@ internal sealed class StockConfiguration : IEntityTypeConfiguration<Stock>
 {
     public void Configure(EntityTypeBuilder<Stock> builder)
     {
-        builder.ToTable("mv_stock");
+        builder.ToView("stock_view");
 
         builder.HasKey(s => s.Id);
 

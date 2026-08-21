@@ -25,10 +25,6 @@ Assembly[] moduleApplicationAssemblies = [
 
 builder.Services.AddApplication(moduleApplicationAssemblies);
 
-string redisConnectionString = builder.Configuration.GetConnectionStringOrThrow(ServiceNames.Redis);
-
-builder.Services.AddInfrastructure(redisConnectionString);
-
 builder.Configuration.AddModuleConfiguration(["orders", "stocks", "users"]);
 
 builder.Services.AddOrdersModule(builder.Configuration);

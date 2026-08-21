@@ -25,9 +25,9 @@ internal sealed class Worker(
 
             var dbContexts = new List<DbContext>
             {
-                scope.ServiceProvider.GetRequiredService<OrdersDbContext>(),
+                scope.ServiceProvider.GetRequiredService<UsersDbContext>(),
                 scope.ServiceProvider.GetRequiredService<StocksDbContext>(),
-                scope.ServiceProvider.GetRequiredService<UsersDbContext>()
+                scope.ServiceProvider.GetRequiredService<OrdersDbContext>()
             };
 
             foreach (DbContext dbContext in dbContexts)

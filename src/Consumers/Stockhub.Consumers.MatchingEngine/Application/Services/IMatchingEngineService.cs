@@ -4,7 +4,8 @@ namespace Stockhub.Consumers.MatchingEngine.Application.Services;
 
 internal interface IMatchingEngineService
 {
-    Task InitializeAsync(CancellationToken cancellationToken);
-    Task EnqueueOrderAsync(Order incomingOrder, CancellationToken cancellationToken);
-    Task<List<Trade>> MatchPendingOrdersAsync(Guid stockId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<Trade>> ProcessOrderAsync(
+        string partition,
+        Order incomingOrder,
+        CancellationToken cancellationToken);
 }
