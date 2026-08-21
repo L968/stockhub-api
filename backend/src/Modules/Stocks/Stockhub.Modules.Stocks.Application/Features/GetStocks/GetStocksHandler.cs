@@ -26,7 +26,10 @@ internal sealed class GetStocksHandler(
             ))
             .ToListAsync(cancellationToken);
 
-        logger.LogDebug("Retrieved {Count} stocks with latest snapshots from database", stocks.Count);
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.LogDebug("Retrieved {Count} stocks with latest snapshots from database", stocks.Count);
+        }
 
         return Result.Success(stocks);
     }

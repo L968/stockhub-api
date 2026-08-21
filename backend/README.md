@@ -4,7 +4,7 @@ Simulador de mercado de ativos criado como projeto de portfólio. A aplicação 
 
 ## Stack
 
-- .NET 9 e ASP.NET Core
+- .NET 10 e ASP.NET Core
 - PostgreSQL
 - RabbitMQ Super Streams e Transactional Outbox
 - .NET Aspire para orquestração local
@@ -15,7 +15,7 @@ Veja [ARCHITECTURE.md](ARCHITECTURE.md) para o mapa do sistema e as decisões at
 
 ## Executar
 
-Pré-requisitos: .NET 9 SDK e Docker compatível com .NET Aspire.
+Pré-requisitos: .NET 10 SDK e Docker compatível com .NET Aspire.
 
 ```bash
 dotnet run --project aspire/Stockhub.Aspire/Stockhub.Aspire.AppHost

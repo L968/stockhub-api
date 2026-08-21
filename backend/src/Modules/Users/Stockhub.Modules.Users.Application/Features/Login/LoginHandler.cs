@@ -18,7 +18,10 @@ internal sealed class LoginHandler(
             return Result.Failure(UserErrors.InvalidCredentials);
         }
 
-        logger.LogDebug("User {Email} logged in", request.Email);
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.LogDebug("User {Email} logged in", request.Email);
+        }
 
         return user.Id;
     }

@@ -31,7 +31,10 @@ internal sealed class GetMyPortfolioHandler(
         List<PortfolioPositionResponse> positions = BuildPositions(portfolio, prices);
         GetMyPortfolioResponse response = BuildResponse(positions);
 
-        logger.LogDebug("Retrieved portfolio for user {UserId} with {Count} positions", request.UserId, positions.Count);
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.LogDebug("Retrieved portfolio for user {UserId} with {Count} positions", request.UserId, positions.Count);
+        }
 
         return Result.Success(response);
     }

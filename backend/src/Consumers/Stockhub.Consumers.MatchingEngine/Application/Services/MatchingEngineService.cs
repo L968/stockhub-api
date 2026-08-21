@@ -19,7 +19,10 @@ internal sealed class MatchingEngineService(
     {
         if (orderBookRepository.ContainsOrder(incomingOrder.Id))
         {
-            logger.LogDebug("Order {OrderId} ignored because it is already in memory", incomingOrder.Id);
+            if (logger.IsEnabled(LogLevel.Debug))
+            {
+                logger.LogDebug("Order {OrderId} ignored because it is already in memory", incomingOrder.Id);
+            }
             return [];
         }
 

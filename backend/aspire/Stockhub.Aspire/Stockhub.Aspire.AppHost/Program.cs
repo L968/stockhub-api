@@ -31,10 +31,9 @@ builder.AddProject<Projects.Stockhub_Consumers_MatchingEngine>(ServiceNames.Cons
     .WaitForCompletion(migrationService)
     .WithReplicas(3);
 
-builder.AddNpmApp("frontend", "../../../../frontend", "dev")
+builder.AddViteApp("frontend", "../../../../frontend")
     .WithReference(api)
     .WithEnvironment("VITE_API_BASE_URL", api.GetEndpoint("http"))
-    .WithHttpEndpoint(name: "http", env: "PORT")
     .WithExternalHttpEndpoints()
     .WaitFor(api);
 

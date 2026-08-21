@@ -26,7 +26,10 @@ internal sealed class CreateUserHandler(
         await dbContext.Users.AddAsync(user, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        logger.LogDebug("Created new user {@User}", user);
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.LogDebug("Created new user {@User}", user);
+        }
 
         return user.Id;
     }

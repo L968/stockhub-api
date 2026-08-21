@@ -27,7 +27,10 @@ internal sealed class GetCurrentUserHandler(
             user.CurrentBalance
         );
 
-        logger.LogDebug("Fetched user {@User}", user);
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.LogDebug("Fetched user {@User}", user);
+        }
 
         return response;
     }

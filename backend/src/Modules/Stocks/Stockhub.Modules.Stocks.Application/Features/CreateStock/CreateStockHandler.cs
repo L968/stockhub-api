@@ -34,7 +34,10 @@ internal sealed class CreateStockHandler(
         await dbContext.StockSnapshots.AddAsync(snapshot, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        logger.LogDebug("Created new stock {@Stock}", stock);
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.LogDebug("Created new stock {@Stock}", stock);
+        }
 
         return Result.Success(stock.Id);
     }

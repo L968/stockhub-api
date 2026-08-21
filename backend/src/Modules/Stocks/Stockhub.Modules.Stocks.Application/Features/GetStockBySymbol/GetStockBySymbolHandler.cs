@@ -33,7 +33,10 @@ internal sealed class GetStockBySymbolHandler(
             stock.Snapshot.UpdatedAtUtc
         );
 
-        logger.LogDebug("Retrieved stock {@Stock}", response);
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.LogDebug("Retrieved stock {@Stock}", response);
+        }
 
         return Result.Success(response);
     }

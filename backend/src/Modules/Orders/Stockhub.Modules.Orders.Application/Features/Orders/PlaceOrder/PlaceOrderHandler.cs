@@ -50,7 +50,10 @@ internal sealed class PlaceOrderHandler(
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        logger.LogDebug("Created new order {@Order}", order);
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.LogDebug("Created new order {@Order}", order);
+        }
 
         return Result.Success(order.Id);
     }

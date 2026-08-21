@@ -40,7 +40,10 @@ internal sealed class GetMyOrdersHandler(
             items
         );
 
-        logger.LogDebug("Retrieved {Count} orders for user {UserId}", items.Count, request.UserId);
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.LogDebug("Retrieved {Count} orders for user {UserId}", items.Count, request.UserId);
+        }
 
         return Result.Success(paginated);
     }

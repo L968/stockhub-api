@@ -55,10 +55,13 @@ internal sealed class MatchingWorkerHostedService(
             },
             loggerFactory.CreateLogger<Consumer>());
 
-        logger.LogInformation(
-            "Matching worker connected to {Stream} with {PartitionCount} partitions",
-            RabbitMqStreamOptions.OrderStream,
-            _partitions.Length);
+        if (logger.IsEnabled(LogLevel.Information))
+        {
+            logger.LogInformation(
+                "Matching worker connected to {Stream} with {PartitionCount} partitions",
+                RabbitMqStreamOptions.OrderStream,
+                _partitions.Length);
+        }
 
         await Task.Delay(Timeout.InfiniteTimeSpan, stoppingToken);
     }
@@ -72,14 +75,20 @@ internal sealed class MatchingWorkerHostedService(
         {
             _partitionInitializations.TryRemove(partition, out _);
             orderBooks.RemovePartition(partition);
-            logger.LogInformation("Released matching partition {Partition}", partition);
+            if (logger.IsEnabled(LogLevel.Information))
+            {
+                logger.LogInformation("Released matching partition {Partition}", partition);
+            }
             return new OffsetTypeNext();
         }
 
         _partitionInitializations[partition] = InitializePartitionAsync(partition, CancellationToken.None);
         ulong? offset = await _streamSystem!.TryQueryOffset(reference, partition);
 
-        logger.LogInformation("Acquired matching partition {Partition}", partition);
+        if (logger.IsEnabled(LogLevel.Information))
+        {
+            logger.LogInformation("Acquired matching partition {Partition}", partition);
+        }
         return offset.HasValue ? new OffsetTypeOffset(offset.Value + 1) : new OffsetTypeFirst();
     }
 
@@ -140,10 +149,13 @@ internal sealed class MatchingWorkerHostedService(
         }
 
         orderBooks.ReplacePartition(partition, partitionOrders);
-        logger.LogInformation(
-            "Rebuilt partition {Partition} with {OrderCount} open orders",
-            partition,
-            partitionOrders.Count);
+        if (logger.IsEnabled(LogLevel.Information))
+        {
+            logger.LogInformation(
+                "Rebuilt partition {Partition} with {OrderCount} open orders",
+                partition,
+                partitionOrders.Count);
+        }
     }
 
     private Task<StreamSystem> CreateStreamSystemAsync()

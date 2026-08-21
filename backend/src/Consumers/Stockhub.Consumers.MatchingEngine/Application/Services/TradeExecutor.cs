@@ -27,13 +27,16 @@ internal sealed class TradeExecutor(
         orderBookRepository.UpdateOrderFilledQuantity(proposal.BuyOrderId, settlement.BuyOrderFilledQuantity);
         orderBookRepository.UpdateOrderFilledQuantity(proposal.SellOrderId, settlement.SellOrderFilledQuantity);
 
-        logger.LogInformation(
-            "Trade executed: {StockId} | Buy {BuyOrderId} ↔ Sell {SellOrderId} @ {Price} x {Quantity}",
-            trade.StockId,
-            trade.BuyOrderId,
-            trade.SellOrderId,
-            trade.Price,
-            trade.Quantity);
+        if (logger.IsEnabled(LogLevel.Information))
+        {
+            logger.LogInformation(
+                "Trade executed: {StockId} | Buy {BuyOrderId} ↔ Sell {SellOrderId} @ {Price} x {Quantity}",
+                trade.StockId,
+                trade.BuyOrderId,
+                trade.SellOrderId,
+                trade.Price,
+                trade.Quantity);
+        }
 
         return Result.Success(trade);
     }

@@ -23,7 +23,10 @@ internal sealed class FindStocksHandler(
                 s.Name))
             .ToListAsync(cancellationToken);
 
-        logger.LogDebug("Found {Count} stocks for search term {SearchTerm}", stocks.Count, request.Query);
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.LogDebug("Found {Count} stocks for search term {SearchTerm}", stocks.Count, request.Query);
+        }
 
         return Result.Success(stocks);
     }

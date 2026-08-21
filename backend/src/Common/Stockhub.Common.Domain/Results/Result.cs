@@ -43,16 +43,16 @@ public class Result : ResultBase
 
 public sealed class Result<TValue> : ResultBase
 {
-    private readonly TValue? _value;
+    private TValue? ValueOrDefault { get; }
 
     public Result(TValue? value, bool isSuccess, Error error) : base(isSuccess, error)
     {
-        _value = value;
+        ValueOrDefault = value;
     }
 
     [NotNull]
     public TValue Value => IsSuccess
-        ? _value!
+        ? ValueOrDefault!
         : throw new InvalidOperationException("Cannot access value of a failed result.");
 
     public static Result<TValue> Success(TValue value) => new(value, true, Error.None);

@@ -50,7 +50,10 @@ internal sealed class GetOrderBookHandler(
             DateTime.UtcNow
         );
 
-        logger.LogDebug("Retrieved order book for stock {Symbol}", request.Symbol);
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.LogDebug("Retrieved order book for stock {Symbol}", request.Symbol);
+        }
 
         return Result.Success(response);
     }

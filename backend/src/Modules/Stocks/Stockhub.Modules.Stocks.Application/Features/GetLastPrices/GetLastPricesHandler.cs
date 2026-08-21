@@ -32,7 +32,10 @@ internal sealed class GetLastPricesHandler(
             StringComparer.OrdinalIgnoreCase
         );
 
-        logger.LogDebug("Fetched last prices for {Count} stocks", prices.Count);
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.LogDebug("Fetched last prices for {Count} stocks", prices.Count);
+        }
 
         return Result.Success(new GetLastPricesResponse(prices));
     }
