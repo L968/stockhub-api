@@ -40,7 +40,7 @@ describe('OrderTicket', () => {
       price: 12.5,
       quantity: 4,
     });
-    expect(await screen.findByText('Order accepted for processing.')).toBeInTheDocument();
+    expect(await screen.findByText('Order accepted and sent to matching.')).toBeInTheDocument();
   });
 
   it('prevents submission with an invalid quantity', async () => {

@@ -30,7 +30,7 @@ export function AppShell() {
   return (
     <div className="min-h-screen bg-ink text-slate-200">
       <header className="sticky top-0 z-40 border-b border-line/80 bg-ink/90 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-[1500px] items-center justify-between px-4 sm:px-6">
+        <div className="mx-auto flex h-16 max-w-[1720px] items-center justify-between px-4 sm:px-6">
           <Brand />
           <div className="flex items-center gap-3">
             <div className="hidden text-right sm:block">
@@ -62,15 +62,15 @@ export function AppShell() {
         </div>
       )}
 
-      <div className="mx-auto flex max-w-[1500px]">
-        <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-56 shrink-0 border-r border-line px-4 py-6 sm:block">
+      <div className="mx-auto flex max-w-[1720px]">
+        <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-52 shrink-0 border-r border-line px-4 py-6 sm:block">
           <nav className="space-y-1">{navigation}</nav>
           <div className="absolute bottom-6 left-4 right-4 rounded-xl border border-line bg-panel/60 p-3">
             <p className="font-mono text-[10px] uppercase tracking-widest text-lime">Simulation</p>
             <p className="mt-1 text-xs leading-relaxed text-slate-500">Portfolio environment. No real money involved.</p>
           </div>
         </aside>
-        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <main className="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-7 lg:py-6">
           <Outlet />
         </main>
       </div>

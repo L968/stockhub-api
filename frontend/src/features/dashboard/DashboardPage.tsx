@@ -51,7 +51,7 @@ export function DashboardPage() {
             <p className="eyebrow">Holdings</p>
             <h2 className="section-title">Portfolio</h2>
           </div>
-          <span className="font-mono text-xs text-slate-500">{positions.length} assets</span>
+          <span className="number text-xs text-slate-500">{positions.length} assets</span>
         </div>
         {positions.length === 0 ? (
           <EmptyState icon={Briefcase} title="No positions yet" description="Executed buy orders will appear here." />
@@ -66,7 +66,7 @@ export function DashboardPage() {
                   return (
                     <tr key={position.symbol}>
                       <td><Link className="symbol-link" to={`/market/${position.symbol}`}>{position.symbol}</Link></td>
-                      <td className="font-mono">{position.quantity}</td>
+                      <td className="number">{position.quantity}</td>
                       <td>{formatCurrency(position.avgPrice)}</td>
                       <td>{formatCurrency(position.currentPrice)}</td>
                       <td className="font-medium text-white">{formatCurrency(position.marketValue)}</td>
@@ -104,7 +104,7 @@ export function DashboardPage() {
               {recentTrades.map((trade) => (
                 <div className="flex items-center justify-between gap-3 px-5 py-4" key={trade.id}>
                   <div><div className="flex items-center gap-2"><span className="font-semibold text-white">{trade.symbol}</span><SideBadge side={trade.side} /></div><p className="mt-1 text-xs text-slate-500">{formatDate(trade.executedAt)}</p></div>
-                  <div className="text-right"><p className="font-mono text-sm text-slate-200">{formatCurrency(trade.price * trade.quantity)}</p><p className="mt-1 text-xs text-slate-500">{trade.quantity} @ {formatCurrency(trade.price)}</p></div>
+                  <div className="text-right"><p className="number text-sm font-medium text-slate-200">{formatCurrency(trade.price * trade.quantity)}</p><p className="mt-1 text-xs text-slate-500">{trade.quantity} @ {formatCurrency(trade.price)}</p></div>
                 </div>
               ))}
             </div>
@@ -119,7 +119,7 @@ function Metric({ icon: Icon, label, value }: { icon: typeof WalletCards; label:
   return (
     <div className="panel p-5">
       <div className="flex items-center justify-between"><p className="text-sm text-slate-500">{label}</p><Icon className="text-slate-600" size={17} /></div>
-      <p className="mt-4 font-mono text-2xl font-medium tracking-tight text-white">{value}</p>
+      <p className="number mt-4 text-2xl font-semibold tracking-tight text-white">{value}</p>
     </div>
   );
 }

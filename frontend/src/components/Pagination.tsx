@@ -10,7 +10,7 @@ export function Pagination({ page, totalPages, onChange }: {
       <button className="button-ghost" disabled={page <= 1} onClick={() => onChange(page - 1)} type="button">
         <ChevronLeft size={15} /> Previous
       </button>
-      <span className="font-mono text-xs text-slate-500">{page} / {Math.max(totalPages, 1)}</span>
+      <span className="number text-xs text-slate-500">{page} / {Math.max(totalPages, 1)}</span>
       <button className="button-ghost" disabled={page >= totalPages} onClick={() => onChange(page + 1)} type="button">
         Next <ChevronRight size={15} />
       </button>

@@ -89,8 +89,15 @@ internal sealed class OrderBook(Guid stockId, List<Order> orders)
             stockId,
             BuyOrderId: buy.Id,
             SellOrderId: sell.Id,
-            Price: sell.Price,
+            Price: GetExecutionPrice(buy, sell),
             Quantity: quantity
         );
+    }
+
+    private static decimal GetExecutionPrice(Order buy, Order sell)
+    {
+        return buy.CreatedAtUtc < sell.CreatedAtUtc
+            ? buy.Price
+            : sell.Price;
     }
 }

@@ -193,7 +193,7 @@ public class OrderBookTests
         // Assert
         Assert.Single(proposals);
         Assert.Equal(5, proposals[0].Quantity);
-        Assert.Equal(95, proposals[0].Price);
+        Assert.Equal(100, proposals[0].Price);
         Assert.Equal(buyOrder.Id, proposals[0].BuyOrderId);
         Assert.Equal(sellOrder.Id, proposals[0].SellOrderId);
     }
@@ -215,12 +215,12 @@ public class OrderBookTests
         Assert.Equal(2, proposals.Count);
 
         Assert.Equal(4, proposals[0].Quantity);
-        Assert.Equal(100, proposals[0].Price);
+        Assert.Equal(105, proposals[0].Price);
         Assert.Equal(buyOrder1.Id, proposals[0].BuyOrderId);
         Assert.Equal(sellOrder.Id, proposals[0].SellOrderId);
 
         Assert.Equal(6, proposals[1].Quantity);
-        Assert.Equal(100, proposals[1].Price);
+        Assert.Equal(104, proposals[1].Price);
         Assert.Equal(buyOrder2.Id, proposals[1].BuyOrderId);
         Assert.Equal(sellOrder.Id, proposals[1].SellOrderId);
     }
@@ -241,7 +241,7 @@ public class OrderBookTests
 
         // Assert
         Assert.Equal(2, proposals.Count);
-        Assert.Equal(100, proposals[0].Price);
+        Assert.Equal(105, proposals[0].Price);
         Assert.Equal(100, proposals[1].Price);
         Assert.Equal(5, proposals[0].Quantity);
         Assert.Equal(5, proposals[1].Quantity);
@@ -264,7 +264,7 @@ public class OrderBookTests
         Assert.Single(proposals);
         Assert.Equal(pendingBuy.Id, proposals[0].BuyOrderId);
         Assert.Equal(10, proposals[0].Quantity);
-        Assert.Equal(95, proposals[0].Price);
+        Assert.Equal(100, proposals[0].Price);
     }
 
     [Fact]
@@ -283,7 +283,7 @@ public class OrderBookTests
         // Assert
         Assert.Single(proposals);
         Assert.Equal(5, proposals[0].Quantity);
-        Assert.Equal(95, proposals[0].Price);
+        Assert.Equal(100, proposals[0].Price);
         Assert.Equal(buyOrder1.Id, proposals[0].BuyOrderId);
         Assert.Equal(sellOrder.Id, proposals[0].SellOrderId);
     }
@@ -318,7 +318,7 @@ public class OrderBookTests
         // Assert
         Assert.Single(proposals);
         Assert.Equal(10, proposals[0].Quantity);
-        Assert.Equal(95, proposals[0].Price);
+        Assert.Equal(100, proposals[0].Price);
         Assert.Equal(buyOrder.Id, proposals[0].BuyOrderId);
         Assert.Equal(sellOrder.Id, proposals[0].SellOrderId);
     }
@@ -387,11 +387,12 @@ public class OrderBookTests
     }
 
     [Fact]
-    public void ProposeAllPossibleTrades_Should_Use_SellOrder_Price()
+    public void ProposeAllPossibleTrades_IncomingSell_Should_Use_RestingBestBidPrice()
     {
         // Arrange
-        Order sellOrder = CreateOrder(OrderSide.Sell, 95, 10);
-        Order buyOrder = CreateOrder(OrderSide.Buy, 100, 10);
+        DateTime restingOrderTime = DateTime.UtcNow.AddMinutes(-1);
+        Order buyOrder = CreateOrder(OrderSide.Buy, 290, 10, createdAtUtc: restingOrderTime);
+        Order sellOrder = CreateOrder(OrderSide.Sell, 10, 10);
         var orderBook = new OrderBook(_stockId, [sellOrder, buyOrder]);
 
         // Act
@@ -399,7 +400,27 @@ public class OrderBookTests
 
         // Assert
         Assert.Single(proposals);
-        Assert.Equal(95, proposals[0].Price);
+        Assert.Equal(290, proposals[0].Price);
+        Assert.Equal(10, proposals[0].Quantity);
+        Assert.Equal(buyOrder.Id, proposals[0].BuyOrderId);
+        Assert.Equal(sellOrder.Id, proposals[0].SellOrderId);
+    }
+
+    [Fact]
+    public void ProposeAllPossibleTrades_IncomingBuy_Should_Use_RestingBestAskPrice()
+    {
+        // Arrange
+        DateTime restingOrderTime = DateTime.UtcNow.AddMinutes(-1);
+        Order sellOrder = CreateOrder(OrderSide.Sell, 290, 10, createdAtUtc: restingOrderTime);
+        Order buyOrder = CreateOrder(OrderSide.Buy, 350, 10);
+        var orderBook = new OrderBook(_stockId, [sellOrder, buyOrder]);
+
+        // Act
+        List<TradeProposal> proposals = orderBook.ProposeAllPossibleTrades();
+
+        // Assert
+        Assert.Single(proposals);
+        Assert.Equal(290, proposals[0].Price);
         Assert.Equal(10, proposals[0].Quantity);
         Assert.Equal(buyOrder.Id, proposals[0].BuyOrderId);
         Assert.Equal(sellOrder.Id, proposals[0].SellOrderId);

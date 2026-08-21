@@ -4,17 +4,17 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        mono: ['"IBM Plex Mono"', 'ui-monospace', 'monospace'],
+        sans: ['ui-sans-serif', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Consolas', 'monospace'],
       },
       colors: {
-        ink: '#080b10',
-        panel: '#10151d',
-        line: '#252d39',
-        lime: '#b6f36b',
+        ink: '#090c10',
+        panel: '#12171e',
+        line: '#29313c',
+        lime: '#9fe870',
       },
       boxShadow: {
-        glow: '0 0 32px rgba(182, 243, 107, 0.12)',
+        glow: '0 0 32px rgba(159, 232, 112, 0.12)',
       },
     },
   },

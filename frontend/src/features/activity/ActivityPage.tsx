@@ -46,10 +46,10 @@ function OrdersTable({ page, onPageChange }: { page: number; onPageChange: (page
 
   return (
     <section className={`panel overflow-hidden ${result.isFetching ? 'opacity-70' : ''}`}>
-      <div className="panel-heading"><h2 className="section-title">Orders</h2><span className="font-mono text-xs text-slate-500">{result.data?.totalItems ?? orders.length} total</span></div>
+      <div className="panel-heading"><h2 className="section-title">Orders</h2><span className="number text-xs text-slate-500">{result.data?.totalItems ?? orders.length} total</span></div>
       {orders.length === 0 ? <EmptyState icon={ListOrdered} title="No orders yet" description="Your submitted orders will appear here." /> : (
         <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Date</th><th>Asset</th><th>Side</th><th>Price</th><th>Filled</th><th>Total</th><th>Status</th></tr></thead><tbody>
-          {orders.map((order) => <tr key={order.id}><td>{formatDate(order.createdAtUtc)}</td><td><span className="symbol-link">{order.stock.symbol}</span><span className="mt-1 block text-xs text-slate-500">{order.stock.name}</span></td><td><SideBadge side={order.side} /></td><td className="font-mono">{formatCurrency(order.price)}</td><td className="font-mono">{order.filledQuantity} / {order.quantity}</td><td className="font-mono text-white">{formatCurrency(order.price * order.quantity)}</td><td><StatusBadge status={order.status} /></td></tr>)}
+          {orders.map((order) => <tr key={order.id}><td>{formatDate(order.createdAtUtc)}</td><td><span className="symbol-link">{order.stock.symbol}</span><span className="mt-1 block text-xs text-slate-500">{order.stock.name}</span></td><td><SideBadge side={order.side} /></td><td className="number">{formatCurrency(order.price)}</td><td className="number">{order.filledQuantity} / {order.quantity}</td><td className="number font-medium text-white">{formatCurrency(order.price * order.quantity)}</td><td><StatusBadge status={order.status} /></td></tr>)}
         </tbody></table></div>
       )}
       <Pagination onChange={onPageChange} page={page} totalPages={result.data?.totalPages ?? 1} />
@@ -69,10 +69,10 @@ function TradesTable({ page, onPageChange }: { page: number; onPageChange: (page
 
   return (
     <section className={`panel overflow-hidden ${result.isFetching ? 'opacity-70' : ''}`}>
-      <div className="panel-heading"><h2 className="section-title">Executions</h2><span className="font-mono text-xs text-slate-500">{result.data?.totalItems ?? trades.length} total</span></div>
+      <div className="panel-heading"><h2 className="section-title">Executions</h2><span className="number text-xs text-slate-500">{result.data?.totalItems ?? trades.length} total</span></div>
       {trades.length === 0 ? <EmptyState icon={Clock3} title="No trades yet" description="Matched orders will appear here." /> : (
         <div className="overflow-x-auto"><table className="data-table"><thead><tr><th>Date</th><th>Asset</th><th>Side</th><th>Price</th><th>Quantity</th><th>Total</th></tr></thead><tbody>
-          {trades.map((trade) => <tr key={trade.id}><td>{formatDate(trade.executedAt)}</td><td><span className="symbol-link">{trade.symbol}</span></td><td><SideBadge side={trade.side} /></td><td className="font-mono">{formatCurrency(trade.price)}</td><td className="font-mono">{trade.quantity}</td><td className="font-mono text-white">{formatCurrency(trade.price * trade.quantity)}</td></tr>)}
+          {trades.map((trade) => <tr key={trade.id}><td>{formatDate(trade.executedAt)}</td><td><span className="symbol-link">{trade.symbol}</span></td><td><SideBadge side={trade.side} /></td><td className="number">{formatCurrency(trade.price)}</td><td className="number">{trade.quantity}</td><td className="number font-medium text-white">{formatCurrency(trade.price * trade.quantity)}</td></tr>)}
         </tbody></table></div>
       )}
       <Pagination onChange={onPageChange} page={page} totalPages={result.data?.totalPages ?? 1} />
