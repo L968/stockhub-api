@@ -19,6 +19,7 @@ IResourceBuilder<ProjectResource> migrationService = builder
     .WaitFor(database);
 
 IResourceBuilder<ProjectResource> api = builder.AddProject<Projects.Stockhub_Api>(ServiceNames.Api)
+    .WithEndpoint("http", endpoint => endpoint.Port = 5196)
     .WithReference(database)
     .WithReference(rabbitMq)
     .WaitFor(rabbitMq)

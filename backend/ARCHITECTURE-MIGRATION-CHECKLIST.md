@@ -1,35 +1,35 @@
-# Checklist temporário — simplificação da arquitetura
+# Temporary architecture simplification checklist
 
-## Concluído
+## Completed
 
-- [x] Preservar a arquitetura anterior na branch `archive/kafka-debezium`.
-- [x] Migrar `Stockhub.sln` para `Stockhub.slnx`.
-- [x] Remover Redis.
-- [x] Remover Docker Compose, Kafka, Debezium, Kafka Connect, Zookeeper e Kafka UI.
-- [x] Usar Aspire como único orquestrador local.
-- [x] Adicionar PostgreSQL e RabbitMQ ao Aspire.
-- [x] Substituir Kafka por RabbitMQ Super Streams.
-- [x] Criar o contrato explícito `OrderPlaced`.
-- [x] Implementar Transactional Outbox no módulo Orders.
-- [x] Particionar ordens por `StockId` e usar Single Active Consumer.
-- [x] Substituir as réplicas `mv_user` e `mv_stock` por views PostgreSQL.
-- [x] Manter `X-User-Id` como simplificação intencional.
-- [x] Atualizar README e documentação arquitetural.
-- [x] Validar restore, builds principais e testes automatizados.
+- [x] Preserve the previous architecture in the `archive/kafka-debezium` branch.
+- [x] Migrate `Stockhub.sln` to `Stockhub.slnx`.
+- [x] Remove Redis.
+- [x] Remove Docker Compose, Kafka, Debezium, Kafka Connect, Zookeeper, and Kafka UI.
+- [x] Use Aspire as the only local orchestrator.
+- [x] Add PostgreSQL and RabbitMQ to Aspire.
+- [x] Replace Kafka with RabbitMQ Super Streams.
+- [x] Create the explicit `OrderPlaced` contract.
+- [x] Implement Transactional Outbox in the Orders module.
+- [x] Partition orders by `StockId` and use Single Active Consumer.
+- [x] Replace the `mv_user` and `mv_stock` replicas with PostgreSQL views.
+- [x] Keep `X-User-Id` as an intentional simplification.
+- [x] Update the README and architecture documentation.
+- [x] Validate restore, primary builds, and automated tests.
 
-## Matching e carteira
+## Matching and portfolio
 
-- [x] Reduzir e clarificar as responsabilidades do Matching Engine.
-- [x] Manter books em memória com prioridade por preço e tempo.
-- [x] Tornar trade, preenchimentos, saldos e carteira atomicamente consistentes.
-- [x] Atualizar carteira dentro da liquidação e remover o `PortfolioUpdater` vazio.
-- [x] Remover caches, filas e abstrações internas sem uso.
-- [x] Adicionar testes unitários e integração com Testcontainers para os fluxos principais.
-- [ ] Avaliar reservas de saldo e posição ao criar ordens.
-- [ ] Avaliar uma inbox persistente caso a semântica de redelivery precise ser endurecida.
+- [x] Reduce and clarify Matching Engine responsibilities.
+- [x] Keep order books in memory with price-time priority.
+- [x] Make trades, fills, balances, and portfolio updates atomically consistent.
+- [x] Update the portfolio during settlement and remove the empty `PortfolioUpdater`.
+- [x] Remove unused caches, queues, and internal abstractions.
+- [x] Add unit and Testcontainers integration tests for the primary flows.
+- [ ] Evaluate balance and position reservations when orders are created.
+- [ ] Evaluate a persistent inbox if stronger redelivery semantics become necessary.
 
-## Fora do escopo atual
+## Outside the current scope
 
-- [ ] Implementar cancelamento de ordens e o evento `OrderCancelled`.
-- [ ] Implementar autenticação real.
-- [ ] Remover este checklist ao concluir a remodelagem.
+- [ ] Implement order cancellation and the `OrderCancelled` event.
+- [ ] Implement real authentication.
+- [ ] Remove this checklist when the redesign is complete.

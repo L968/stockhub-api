@@ -1,11 +1,11 @@
 # Stockhub
 
-Monorepo do simulador de mercado de ativos.
+Monorepo for an asset market simulator.
 
-## Estrutura
+## Structure
 
-- `backend/`: API .NET, módulos, Matching Engine, migrations, Aspire e testes.
-- `frontend/`: aplicação React + TypeScript + Vite.
+- `backend/`: .NET API, modules, Matching Engine, migrations, Aspire, and tests.
+- `frontend/`: React, TypeScript, and Vite application.
 
 ## Backend
 
@@ -17,11 +17,11 @@ dotnet run --project backend/aspire/Stockhub.Aspire/Stockhub.Aspire.AppHost
 dotnet test backend/Stockhub.slnx
 ```
 
-Veja [a documentação da arquitetura](backend/ARCHITECTURE.md).
+See the [architecture documentation](backend/ARCHITECTURE.md).
 
 ## Frontend
 
-O Aspire inicia o frontend junto com a API. Para trabalhar somente na interface:
+Aspire starts the frontend together with the API. To work only on the interface:
 
 ```bash
 cd frontend
@@ -29,8 +29,8 @@ npm install
 npm run dev
 ```
 
-Copie `frontend/.env.example` para `frontend/.env.local` quando executar o frontend fora do Aspire.
+Copy `frontend/.env.example` to `frontend/.env.local` when running the frontend outside Aspire.
 
-## Licença
+## License
 
 [MIT](LICENSE.txt)

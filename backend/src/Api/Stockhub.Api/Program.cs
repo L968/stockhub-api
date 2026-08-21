@@ -43,10 +43,12 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("Policy", policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
+        policy.SetIsOriginAllowed(origin =>
+              Uri.TryCreate(origin, UriKind.Absolute, out Uri? uri) &&
+              (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) ||
+               uri.Host.Equals("127.0.0.1", StringComparison.Ordinal)))
               .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+              .AllowAnyMethod();
     });
 });
 
@@ -65,8 +67,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseExceptionHandler(o => { });
 
-app.UseHttpsRedirection();
-
 app.UseCors("Policy");
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 await app.RunAsync();

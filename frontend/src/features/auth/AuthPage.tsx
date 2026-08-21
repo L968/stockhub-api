@@ -77,7 +77,7 @@ export function AuthPage() {
             {mode === 'signup' && (
               <label className="field-label">
                 Full name
-                <input autoComplete="name" className="field" minLength={2} onChange={(event) => setFullName(event.target.value)} placeholder="Lucas Silva" required value={fullName} />
+                <input autoComplete="name" className="field" minLength={2} onChange={(event) => setFullName(event.target.value)} placeholder="Alex Morgan" required value={fullName} />
               </label>
             )}
             <label className="field-label">

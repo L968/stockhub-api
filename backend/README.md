@@ -1,40 +1,40 @@
 # Stockhub
 
-Simulador de mercado de ativos criado como projeto de portfólio. A aplicação permite cadastrar usuários e ativos, enviar bids e offers, consultar o order book e registrar trades e posições.
+Asset market simulator built as a portfolio project. The application lets users create accounts and assets, submit bids and offers, inspect the order book, and track trades and positions.
 
 ## Stack
 
-- .NET 10 e ASP.NET Core
+- .NET 10 and ASP.NET Core
 - PostgreSQL
-- RabbitMQ Super Streams e Transactional Outbox
-- .NET Aspire para orquestração local
-- Entity Framework Core e Dapper
-- xUnit e testes arquiteturais
+- RabbitMQ Super Streams and Transactional Outbox
+- .NET Aspire for local orchestration
+- Entity Framework Core and Dapper
+- xUnit and architecture tests
 
-Veja [ARCHITECTURE.md](ARCHITECTURE.md) para o mapa do sistema e as decisões atuais.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the system map and current decisions.
 
-## Executar
+## Run
 
-Pré-requisitos: .NET 10 SDK e Docker compatível com .NET Aspire.
+Requirements: .NET 10 SDK and a Docker runtime compatible with .NET Aspire.
 
 ```bash
 dotnet run --project aspire/Stockhub.Aspire/Stockhub.Aspire.AppHost
 ```
 
-O Aspire inicia PostgreSQL, RabbitMQ, migrations, API e Matching Engine. Os endpoints e logs ficam disponíveis no dashboard do Aspire.
+Aspire starts PostgreSQL, RabbitMQ, migrations, the API, and the Matching Engine. Endpoints and logs are available in the Aspire dashboard.
 
-## Testar
+## Test
 
 ```bash
 dotnet test Stockhub.slnx
 ```
 
-Os testes de integração usam Testcontainers e exigem Docker em execução.
+Integration tests use Testcontainers and require Docker to be running.
 
-## Identificação de usuário
+## User identification
 
-Os endpoints autenticados usam o header `X-User-Id`. Isso é uma simplificação intencional do projeto; não representa autenticação pronta para produção.
+Authenticated endpoints use the `X-User-Id` header. This is an intentional simplification for the project and is not production-ready authentication.
 
-## Licença
+## License
 
 [MIT](../LICENSE.txt)
