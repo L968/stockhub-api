@@ -21,13 +21,15 @@ Veja [a documentação da arquitetura](backend/ARCHITECTURE.md).
 
 ## Frontend
 
+O Aspire inicia o frontend junto com a API. Para trabalhar somente na interface:
+
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-Copie `frontend/.env.example` para `frontend/.env` quando executar o frontend fora do Aspire.
+Copie `frontend/.env.example` para `frontend/.env.local` quando executar o frontend fora do Aspire.
 
 ## Licença
 

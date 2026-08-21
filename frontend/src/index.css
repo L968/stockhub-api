@@ -1,3 +1,57 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root { color-scheme: dark; font-synthesis: none; }
+  * { @apply border-line; }
+  html { @apply bg-ink antialiased; }
+  body { @apply m-0 min-w-[320px] bg-ink font-sans text-slate-300; }
+  button, input { font: inherit; }
+  button:focus-visible, a:focus-visible, input:focus-visible { @apply outline-none ring-2 ring-lime/70 ring-offset-2 ring-offset-ink; }
+  ::selection { @apply bg-lime/20 text-white; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { @apply bg-ink; }
+  ::-webkit-scrollbar-thumb { @apply rounded-full bg-slate-700; }
+}
+
+@layer components {
+  .panel { @apply rounded-2xl border border-line bg-panel shadow-sm; }
+  .panel-heading { @apply flex items-center justify-between border-b border-line px-5 py-4; }
+  .page-title { @apply mt-2 text-3xl font-semibold tracking-[-0.03em] text-white sm:text-4xl; }
+  .section-title { @apply text-base font-semibold tracking-tight text-slate-100; }
+  .eyebrow { @apply font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-lime; }
+
+  .field-label { @apply block text-sm font-medium text-slate-400; }
+  .field { @apply mt-2 w-full rounded-xl border border-line bg-ink/70 px-3.5 py-3 text-sm text-white placeholder:text-slate-700 transition hover:border-slate-600 focus:border-lime/50 focus:outline-none focus:ring-2 focus:ring-lime/10; }
+
+  .button-primary, .button-secondary, .button-ghost, .button-buy, .button-sell { @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40; }
+  .button-primary { @apply bg-lime text-slate-950 hover:bg-lime/90; }
+  .button-secondary { @apply border border-line bg-panel text-slate-200 hover:border-slate-600 hover:bg-slate-800; }
+  .button-ghost { @apply text-slate-500 hover:bg-white/5 hover:text-slate-200; }
+  .button-buy { @apply bg-emerald-400 text-slate-950 hover:bg-emerald-300; }
+  .button-sell { @apply bg-rose-400 text-slate-950 hover:bg-rose-300; }
+  .icon-button { @apply h-9 w-9 place-items-center rounded-lg border border-line text-slate-500 transition hover:bg-panel hover:text-white; }
+  .text-link { @apply text-xs font-medium text-slate-500 transition hover:text-lime; }
+
+  .nav-link { @apply flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-500 transition hover:bg-white/[0.03] hover:text-slate-200; }
+  .nav-link-active { @apply bg-lime/10 text-lime hover:bg-lime/10 hover:text-lime; }
+  .tab-button { @apply rounded-lg px-5 py-2 text-sm font-medium text-slate-500 transition hover:text-slate-200; }
+  .tab-button-active { @apply bg-slate-800 text-white shadow-sm; }
+  .side-button { @apply flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium text-slate-500 transition; }
+  .side-button-buy { @apply bg-emerald-400/15 text-emerald-400; }
+  .side-button-sell { @apply bg-rose-400/15 text-rose-400; }
+
+  .badge { @apply inline-flex whitespace-nowrap rounded-md border px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wide; }
+  .badge-buy { @apply border-emerald-400/20 bg-emerald-400/10 text-emerald-400; }
+  .badge-sell { @apply border-rose-400/20 bg-rose-400/10 text-rose-400; }
+  .badge-pending { @apply border-amber-400/20 bg-amber-400/10 text-amber-300; }
+  .badge-neutral { @apply border-slate-600 bg-slate-700/20 text-slate-400; }
+  .symbol-link { @apply font-mono text-sm font-semibold text-white transition hover:text-lime; }
+
+  .data-table { @apply w-full min-w-[720px] border-collapse text-left text-sm; }
+  .data-table th { @apply border-b border-line bg-ink/30 px-5 py-3 font-mono text-[10px] font-medium uppercase tracking-wider text-slate-600; }
+  .data-table td { @apply border-b border-line/70 px-5 py-4 text-slate-400; }
+  .data-table tbody tr { @apply transition hover:bg-white/[0.02]; }
+  .data-table tbody tr:last-child td { @apply border-b-0; }
+}

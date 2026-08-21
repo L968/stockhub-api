@@ -18,7 +18,7 @@ IResourceBuilder<ProjectResource> migrationService = builder
     .WithReference(database)
     .WaitFor(database);
 
-builder.AddProject<Projects.Stockhub_Api>(ServiceNames.Api)
+IResourceBuilder<ProjectResource> api = builder.AddProject<Projects.Stockhub_Api>(ServiceNames.Api)
     .WithReference(database)
     .WithReference(rabbitMq)
     .WaitFor(rabbitMq)
@@ -30,5 +30,12 @@ builder.AddProject<Projects.Stockhub_Consumers_MatchingEngine>(ServiceNames.Cons
     .WaitFor(rabbitMq)
     .WaitForCompletion(migrationService)
     .WithReplicas(3);
+
+builder.AddNpmApp("frontend", "../../../../frontend", "dev")
+    .WithReference(api)
+    .WithEnvironment("VITE_API_BASE_URL", api.GetEndpoint("http"))
+    .WithHttpEndpoint(name: "http", env: "PORT")
+    .WithExternalHttpEndpoints()
+    .WaitFor(api);
 
 await builder.Build().RunAsync();
